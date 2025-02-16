@@ -153,7 +153,7 @@ def index():
                     }}
                     
                     function playVideo(videoName) {{
-                        window.location.href = `/player?video=${encodeURIComponent(videoName)}`;
+                        window.location.href = `/player?video=${encodeURI(videoName)}`;
                     }}
                 </script>
             </body>
