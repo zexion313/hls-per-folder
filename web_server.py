@@ -38,51 +38,193 @@ def health_check():
 
 @app.route('/')
 def index():
-    """Serve the main page"""
-    return """
-    <html>
-        <head>
-            <title>Video Player</title>
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    max-width: 800px; 
-                    margin: 0 auto; 
-                    padding: 20px;
-                }
-                .form-container {
-                    background: #f5f5f5;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-top: 20px;
-                }
-                input, button {
-                    padding: 10px;
-                    margin: 5px 0;
-                }
-                button {
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                }
-                button:hover {
-                    background: #0056b3;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Video Player</h1>
-            <div class="form-container">
-                <form action="/player" method="get">
-                    <input type="text" name="video" placeholder="Enter video name" required>
-                    <button type="submit">Load Video</button>
-                </form>
+    """Serve the main page with video cards"""
+    try:
+        # Get list of videos from storage
+        videos = list_videos_from_storage()
+        
+        # Generate HTML for video cards
+        video_cards_html = generate_video_cards(videos)
+        
+        return f"""
+        <html>
+            <head>
+                <title>Video Library</title>
+                <style>
+                    body {{ 
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 20px;
+                        background: #f0f0f0;
+                    }}
+                    .container {{
+                        max-width: 1200px;
+                        margin: 0 auto;
+                    }}
+                    h1 {{
+                        color: #333;
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }}
+                    .video-grid {{
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                        gap: 20px;
+                        padding: 20px;
+                    }}
+                    .video-card {{
+                        background: white;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        transition: transform 0.2s;
+                        cursor: pointer;
+                    }}
+                    .video-card:hover {{
+                        transform: translateY(-5px);
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                    }}
+                    .video-thumbnail {{
+                        width: 100%;
+                        height: 180px;
+                        background: #ddd;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #666;
+                    }}
+                    .video-info {{
+                        padding: 15px;
+                    }}
+                    .video-title {{
+                        margin: 0;
+                        font-size: 18px;
+                        color: #333;
+                    }}
+                    .video-meta {{
+                        margin-top: 8px;
+                        font-size: 14px;
+                        color: #666;
+                    }}
+                    .search-bar {{
+                        margin-bottom: 20px;
+                        text-align: center;
+                    }}
+                    .search-bar input {{
+                        padding: 10px;
+                        width: 300px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        margin-right: 10px;
+                    }}
+                    .no-videos {{
+                        text-align: center;
+                        padding: 40px;
+                        color: #666;
+                        font-size: 18px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Video Library</h1>
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" placeholder="Search videos..." oninput="filterVideos()">
+                    </div>
+                    <div class="video-grid" id="videoGrid">
+                        {video_cards_html}
+                    </div>
+                </div>
+                
+                <script>
+                    function filterVideos() {{
+                        const searchInput = document.getElementById('searchInput');
+                        const filter = searchInput.value.toLowerCase();
+                        const cards = document.getElementsByClassName('video-card');
+                        
+                        for (let card of cards) {{
+                            const title = card.getElementsByClassName('video-title')[0].textContent.toLowerCase();
+                            if (title.includes(filter)) {{
+                                card.style.display = '';
+                            }} else {{
+                                card.style.display = 'none';
+                            }}
+                        }}
+                    }}
+                    
+                    function playVideo(videoName) {{
+                        window.location.href = `/player?video=${encodeURIComponent(videoName)}`;
+                    }}
+                </script>
+            </body>
+        </html>
+        """
+    except Exception as e:
+        logger.error(f"Error generating index page: {str(e)}")
+        return f"""
+        <html>
+            <body>
+                <h1>Error</h1>
+                <p>Failed to load video library. Please try again later.</p>
+                <p>Error: {str(e)}</p>
+            </body>
+        </html>
+        """
+
+def list_videos_from_storage():
+    """Get list of videos from storage"""
+    try:
+        # List objects in the videos directory
+        response = storage.session.list_objects(
+            Bucket=storage.bucket,
+            Prefix='videos/',
+            Delimiter='/'
+        )
+        
+        videos = []
+        # Extract video names from CommonPrefixes
+        for prefix in response.get('CommonPrefixes', []):
+            video_name = prefix.get('Prefix', '').split('/')[1]
+            if video_name:
+                videos.append({
+                    'name': video_name,
+                    'title': video_name.replace('_', ' ').title(),
+                    # You could add more metadata here in the future
+                    'duration': 'Unknown',  # Could be fetched from video metadata
+                    'date': 'Unknown'  # Could be fetched from storage metadata
+                })
+        
+        return videos
+    except Exception as e:
+        logger.error(f"Error listing videos: {str(e)}")
+        return []
+
+def generate_video_cards(videos):
+    """Generate HTML for video cards"""
+    if not videos:
+        return '<div class="no-videos">No videos found</div>'
+    
+    cards_html = []
+    for video in videos:
+        card = f"""
+        <div class="video-card" onclick="playVideo('{video['name']}')">
+            <div class="video-thumbnail">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="#666">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
             </div>
-        </body>
-    </html>
-    """
+            <div class="video-info">
+                <h3 class="video-title">{video['title']}</h3>
+                <div class="video-meta">
+                    <div>Duration: {video['duration']}</div>
+                    <div>Added: {video['date']}</div>
+                </div>
+            </div>
+        </div>
+        """
+        cards_html.append(card)
+    
+    return '\n'.join(cards_html)
 
 @app.route('/player')
 def player():
