@@ -80,7 +80,7 @@ class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def modify_m3u8_urls(self, content):
         """Modify URLs in m3u8 file to use our proxy"""
-        lines = content.split('\\n')
+        lines = content.split('\n')
         modified_lines = []
         
         for line in lines:
@@ -88,13 +88,17 @@ class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
             if line.endswith('.ts') or line.endswith('.m3u8') or line.endswith('.key'):
                 # Convert the segment path to our proxy URL
                 if not line.startswith('http'):
-                    modified_lines.append(f'/proxy/{line}')
+                    if line.startswith('segments/'):
+                        # For segment files, add video parameter
+                        modified_lines.append(f'/proxy/{line}?video={self.video_name}')
+                    else:
+                        modified_lines.append(f'/proxy/{line}')
                 else:
                     modified_lines.append(line)
             else:
                 modified_lines.append(line)
         
-        return '\\n'.join(modified_lines)
+        return '\n'.join(modified_lines)
 
 class VideoPlayerTester:
     def __init__(self, storage_handler: LeasewebStorageHandler):

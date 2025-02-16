@@ -101,10 +101,34 @@ def player():
 def proxy(video_path):
     """Proxy requests to Leaseweb storage"""
     try:
+        # Log the incoming request
+        logger.info(f"Proxy request for: {video_path}")
+        
+        # Construct the full path in storage
+        if video_path.startswith('segments/'):
+            # If it's a segment, we need to prepend the video name path
+            video_name = request.args.get('video')
+            if not video_name:
+                # Try to extract video name from referer
+                referer = request.headers.get('Referer', '')
+                if 'player?video=' in referer:
+                    video_name = referer.split('player?video=')[1].split('&')[0]
+            
+            if video_name:
+                storage_path = f"videos/{video_name}/{video_path}"
+            else:
+                logger.error("Could not determine video name for segment request")
+                return "Video name not found", 400
+        else:
+            storage_path = video_path
+
+        logger.info(f"Accessing storage path: {storage_path}")
+        
         # Generate presigned URL
-        presigned_url = storage.generate_presigned_url(video_path)
+        presigned_url = storage.generate_presigned_url(storage_path)
         
         if not presigned_url:
+            logger.error(f"Failed to generate presigned URL for {storage_path}")
             return "File not found", 404
 
         # Fetch content from storage
@@ -115,7 +139,7 @@ def proxy(video_path):
             
             # If this is an m3u8 file, modify the URLs
             if video_path.endswith('.m3u8'):
-                content = modify_m3u8_urls(content.decode('utf-8'))
+                content = modify_m3u8_urls(content.decode('utf-8'), video_name if 'video_name' in locals() else None)
                 content = content.encode('utf-8')
             
             # Determine content type
@@ -129,11 +153,14 @@ def proxy(video_path):
             
             return resp
         else:
+            logger.error(f"Storage returned status {response.status_code} for {storage_path}")
             return f"Storage returned status {response.status_code}", response.status_code
             
     except requests.Timeout:
+        logger.error(f"Timeout while fetching: {video_path}")
         return "Gateway Timeout", 504
     except Exception as e:
+        logger.error(f"Proxy error for {video_path}: {str(e)}")
         return f"Server Error: {str(e)}", 500
 
 def get_content_type(path):
@@ -147,7 +174,7 @@ def get_content_type(path):
     else:
         return 'application/octet-stream'
 
-def modify_m3u8_urls(content):
+def modify_m3u8_urls(content, video_name=None):
     """Modify URLs in m3u8 file to use our proxy"""
     lines = content.split('\n')
     modified_lines = []
@@ -157,7 +184,11 @@ def modify_m3u8_urls(content):
         if line.endswith('.ts') or line.endswith('.m3u8') or line.endswith('.key'):
             # Convert the segment path to our proxy URL
             if not line.startswith('http'):
-                modified_lines.append(f'/proxy/{line}')
+                if video_name and line.startswith('segments/'):
+                    # For segment files, add video parameter
+                    modified_lines.append(f'/proxy/{line}?video={video_name}')
+                else:
+                    modified_lines.append(f'/proxy/{line}')
             else:
                 modified_lines.append(line)
         else:
