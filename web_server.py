@@ -3,14 +3,38 @@ import os
 from pathlib import Path
 import requests
 import urllib.parse
+import logging
 from config import LEASEWEB_CONFIG
 from storage_handler import LeasewebStorageHandler
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+
+# Initialize storage handler with error handling
+try:
+    storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+    # Test connection immediately
+    if not storage.check_connection():
+        logger.error("Failed to connect to Leaseweb storage. Check your credentials.")
+except Exception as e:
+    logger.error(f"Error initializing storage handler: {str(e)}")
+    storage = None
 
 # Ensure the test_players directory exists
-Path("test_players").mkdir(exist_ok=True)
+try:
+    Path("test_players").mkdir(exist_ok=True)
+except Exception as e:
+    logger.error(f"Error creating test_players directory: {str(e)}")
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint"""
+    if storage and storage.check_connection():
+        return "Healthy", 200
+    return "Unhealthy - Storage connection failed", 500
 
 @app.route('/')
 def index():
