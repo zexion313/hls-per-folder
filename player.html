@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Video Player</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.10.0/video-js.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        .player-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .video-js {
+            width: 100%;
+            height: 0;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .video-select {
+            margin: 20px 0;
+            padding: 10px;
+            width: 100%;
+            background: #333;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            color: white;
+            display: none;
+        }
+
+        .status.error {
+            background-color: #dc3545;
+        }
+
+        .status.info {
+            background-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <h1>HLS Video Player</h1>
+        <select id="videoSelect" class="video-select">
+            <option value="">Select a video...</option>
+        </select>
+        <video id="player" class="video-js vjs-big-play-centered">
+            <p class="vjs-no-js">
+                Please enable JavaScript to view this video.
+            </p>
+        </video>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.10.0/video.min.js"></script>
+    <script>
+        const player = videojs('player', {
+            controls: true,
+            fluid: true,
+            html5: {
+                vhs: {
+                    overrideNative: true,
+                    enableLowInitialPlaylist: true
+                }
+            }
+        });
+
+        const videoSelect = document.getElementById('videoSelect');
+        const statusDiv = document.getElementById('status');
+
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${isError ? 'error' : 'info'}`;
+            statusDiv.style.display = 'block';
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        async function loadVideoList() {
+            try {
+                const response = await fetch('/output');
+                const text = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a'))
+                    .filter(a => a.href.endsWith('/'))
+                    .map(a => a.textContent.replace('/', ''));
+
+                links.forEach(video => {
+                    const option = document.createElement('option');
+                    option.value = video;
+                    option.textContent = video;
+                    videoSelect.appendChild(option);
+                });
+            } catch (error) {
+                showStatus('Error loading video list', true);
+            }
+        }
+
+        videoSelect.addEventListener('change', function() {
+            if (!this.value) return;
+
+            const videoPath = `output/${this.value}/stream.m3u8`;
+            player.src({
+                src: videoPath,
+                type: 'application/x-mpegURL'
+            });
+
+            showStatus('Loading video...');
+        });
+
+        player.on('error', function() {
+            const error = player.error();
+            showStatus(`Playback error: ${error.message}`, true);
+        });
+
+        player.on('loadedmetadata', function() {
+            showStatus('Video loaded successfully');
+        });
+
+        // Load video list when page loads
+        loadVideoList();
+    </script>
+</body>
+</html>

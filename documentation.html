@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Video Converter Documentation</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2, h3 {
+            color: #2c3e50;
+            margin-top: 2em;
+        }
+
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .requirements {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', monospace;
+            margin: 15px 0;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-title);
+            position: absolute;
+            top: -12px;
+            left: 10px;
+            background: #3498db;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+        }
+
+        .file-structure {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .tip {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .function-doc {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .parameter {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .workflow {
+            background: #f1f8ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+
+        .comparison-table th {
+            background: #f8f9fa;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .bottom-line {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 20px 0;
+        }
+
+        .concept {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS Video Converter Documentation</h1>
+
+    <h2>Table of Contents</h2>
+    <ul>
+        <li><a href="#introduction">Introduction to HLS Streaming</a></li>
+        <li><a href="#requirements">Requirements</a></li>
+        <li><a href="#installation">Installation Guide</a></li>
+        <li><a href="#comparison">FFmpeg vs Bento4 Comparison</a></li>
+        <li><a href="#file-structure">Project Structure</a></li>
+        <li><a href="#scripts">Scripts Documentation</a></li>
+        <li><a href="#usage">Usage Guide</a></li>
+        <li><a href="#workflow">Technical Workflow</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ul>
+
+    <h2 id="introduction">Introduction to HLS Streaming</h2>
+    <div class="concept">
+        <h3>What is HLS?</h3>
+        <p>HTTP Live Streaming (HLS) is a video streaming protocol developed by Apple. It works by:</p>
+        <ol>
+            <li>Breaking up video files into small segments (usually 6-10 seconds)</li>
+            <li>Creating a playlist file (.m3u8) that tells the player which segments to play</li>
+            <li>Optionally encrypting segments for security</li>
+        </ol>
+
+        <h3>Why Use HLS?</h3>
+        <ul>
+            <li>Works on almost all devices and browsers</li>
+            <li>Adapts to network conditions</li>
+            <li>Supports encryption for secure streaming</li>
+            <li>Allows seeking through video efficiently</li>
+        </ul>
+
+        <div class="code-block" data-title="Example HLS Playlist (stream.m3u8)">
+            <pre>
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:6
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-KEY:METHOD=AES-128,URI="key.key"
+#EXTINF:6.000000,
+segments/segment_000.ts
+#EXTINF:6.000000,
+segments/segment_001.ts
+#EXTINF:6.000000,
+segments/segment_002.ts
+#EXT-X-ENDLIST</pre>
+        </div>
+    </div>
+
+    <h2 id="requirements">Requirements</h2>
+    <div class="requirements">
+        <h3>Software Requirements:</h3>
+        <ul>
+            <li>Python 3.9 or higher
+                <ul>
+                    <li>Required for running the conversion scripts</li>
+                    <li>Includes built-in HTTP server capabilities</li>
+                </ul>
+            </li>
+            <li>FFmpeg (latest version recommended)
+                <ul>
+                    <li>Powers the video conversion process</li>
+                    <li>Handles video segmentation and encryption</li>
+                </ul>
+            </li>
+            <li>Modern web browser
+                <ul>
+                    <li>Chrome 51+ (recommended)</li>
+                    <li>Firefox 42+</li>
+                    <li>Safari 8+</li>
+                    <li>Edge 14+</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>System Requirements:</h3>
+        <ul>
+            <li>CPU: Any modern dual-core processor or better</li>
+            <li>RAM: Minimum 4GB (8GB recommended)</li>
+            <li>Storage: Depends on video size (roughly 2x the size of input videos)</li>
+            <li>Network: Basic LAN connection for local streaming</li>
+        </ul>
+
+        <div class="tip">
+            <strong>Tip:</strong> For better conversion speed, use an SSD for both input and output files.
+        </div>
+    </div>
+
+    <h2 id="installation">Installation Guide</h2>
+    <div class="workflow">
+        <h3>1. Installing Python</h3>
+        <ol>
+            <li>Visit <a href="https://www.python.org/downloads/">python.org</a></li>
+            <li>Download Python 3.9 or higher for Windows</li>
+            <li>Run the installer
+                <div class="tip">
+                    <strong>Important:</strong> Check "Add Python to PATH" during installation!
+                    <img src="https://i.imgur.com/Ue1YqQp.png" alt="Python installation checkbox">
+                </div>
+            </li>
+            <li>Verify installation:
+                <div class="code-block" data-title="Command Prompt">
+                    <pre>python --version</pre>
+                </div>
+            </li>
+        </ol>
+
+        <h3>2. Installing FFmpeg</h3>
+        <ol>
+            <li>Download FFmpeg:
+                <ul>
+                    <li>Visit <a href="https://ffmpeg.org/download.html">ffmpeg.org</a></li>
+                    <li>Download Windows build</li>
+                    <li>Choose "Windows builds from gyan.dev"</li>
+                </ul>
+            </li>
+            <li>Extract the archive:
+                <ul>
+                    <li>Create folder: <code>C:\ffmpeg</code></li>
+                    <li>Extract contents to this folder</li>
+                    <li>Ensure <code>ffmpeg.exe</code> is at <code>C:\ffmpeg\ffmpeg.exe</code></li>
+                </ul>
+            </li>
+            <li>Verify installation:
+                <div class="code-block" data-title="Command Prompt">
+                    <pre>C:\ffmpeg\ffmpeg.exe -version</pre>
+                </div>
+            </li>
+        </ol>
+
+        <div class="warning">
+            <strong>Common Installation Issues:</strong>
+            <ul>
+                <li>"'python' is not recognized" - Python PATH not set correctly</li>
+                <li>"'ffmpeg' is not recognized" - FFmpeg not in correct location</li>
+                <li>Permission errors - Run Command Prompt as Administrator</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2 id="comparison">FFmpeg vs Bento4 Comparison</h2>
+    <div class="function-doc">
+        <table class="comparison-table">
+            <tr>
+                <th>Feature</th>
+                <th>FFmpeg</th>
+                <th>Bento4</th>
+            </tr>
+            <tr>
+                <td>Installation</td>
+                <td>Single executable, simpler setup</td>
+                <td>Multiple tools, more complex setup</td>
+            </tr>
+            <tr>
+                <td>Input Format Support</td>
+                <td>Supports almost all video formats</td>
+                <td>Limited to MP4 and some other formats</td>
+            </tr>
+            <tr>
+                <td>Processing Speed</td>
+                <td>Faster for single-quality streams</td>
+                <td>Better for multi-bitrate streams</td>
+            </tr>
+            <tr>
+                <td>Memory Usage</td>
+                <td>Lower memory footprint</td>
+                <td>Higher memory usage for large files</td>
+            </tr>
+            <tr>
+                <td>Community Support</td>
+                <td>Large community, extensive documentation</td>
+                <td>Smaller community, focused on streaming</td>
+            </tr>
+            <tr>
+                <td>Updates</td>
+                <td>Regular updates, active development</td>
+                <td>Less frequent updates</td>
+            </tr>
+        </table>
+
+        <div class="bottom-line">
+            <h3>Why We Chose FFmpeg</h3>
+            <p>We selected FFmpeg for this project because:</p>
+            <ol>
+                <li>Simpler installation and setup process</li>
+                <li>Better support for various input formats</li>
+                <li>More efficient for single-quality streaming</li>
+                <li>Extensive documentation and community support</li>
+                <li>Regular updates and bug fixes</li>
+            </ol>
+            <p>While Bento4 is excellent for multi-bitrate streaming, FFmpeg's simplicity and efficiency make it the better choice for our use case of converting and streaming single-quality videos.</p>
+        </div>
+    </div>
+
+    <h2 id="file-structure">Project Structure</h2>
+    <div class="file-structure">
+        <h3>Directory Layout:</h3>
+        <pre>
+ffmpeg/
+├── input/                  # Place MP4 files here
+├── output/                 # Generated HLS content
+│   └── [video_name]/      # One folder per video
+│       ├── segments/      # .ts segments (encrypted video chunks)
+│       ├── key.key        # Encryption key (unique per video)
+│       ├── stream.m3u8    # Main playlist (points to segments)
+│       └── iframes.m3u8   # Quick seeking playlist
+├── generate.py            # Video conversion script
+├── serve.py              # HTTP server script
+├── player.html           # Web-based video player
+├── generate.bat          # Windows shortcut for generate.py
+└── serve.bat            # Windows shortcut for serve.py</pre>
+
+        <div class="tip">
+            <strong>Understanding the Structure:</strong>
+            <ul>
+                <li><code>input/</code> - Drop your MP4 files here</li>
+                <li><code>output/</code> - Contains converted videos, each in its own folder</li>
+                <li><code>segments/</code> - Contains 6-second video chunks</li>
+                <li><code>*.m3u8</code> - Playlist files that tell the player how to play the video</li>
+                <li><code>key.key</code> - Encryption key for secure playback</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2 id="scripts">Scripts Documentation</h2>
+
+    <h3>generate.py</h3>
+    <div class="function-doc">
+        <h4>Purpose:</h4>
+        <p>This script converts MP4 videos into HLS format with encryption and segmentation.</p>
+
+        <h4>Main Components:</h4>
+        <div class="code-block" data-title="Configuration Settings">
+            <pre>
+# Settings that control how videos are processed
+FFMPEG_PATH = r"C:\ffmpeg\ffmpeg.exe"  # Path to FFmpeg
+SEGMENT_DURATION = 6                    # How long each chunk should be
+KEY_LENGTH = 16                         # Encryption key size (128-bit)</pre>
+        </div>
+
+        <h4>Key Classes and Functions:</h4>
+        <ol>
+            <li>
+                <strong>VideoProcessor Class</strong>
+                <p>The main class that handles video conversion:</p>
+                <div class="code-block" data-title="Class Definition">
+                    <pre>
+class VideoProcessor:
+    def __init__(self, input_dir: str, output_dir: str):
+        self.input_dir = Path(input_dir)    # Where to find MP4 files
+        self.output_dir = Path(output_dir)  # Where to save converted files</pre>
+                </div>
+            </li>
+            <li>
+                <strong>_generate_key()</strong>
+                <p>Creates a secure encryption key for the video:</p>
+                <div class="code-block" data-title="Encryption Key Generation">
+                    <pre>
+def _generate_key(self) -> tuple[bytes, str]:
+    """Generate a random 128-bit key for video encryption"""
+    key = secrets.token_bytes(KEY_LENGTH)  # Create random key
+    return key, "key.key"                  # Return key and filename</pre>
+                </div>
+            </li>
+            <li>
+                <strong>process_video()</strong>
+                <p>Converts a single video file to HLS format:</p>
+                <div class="code-block" data-title="Video Processing">
+                    <pre>
+# Main FFmpeg command explained:
+ffmpeg -i input.mp4 \                    # Input video file
+    -hls_time 6 \                        # 6-second segments
+    -hls_key_info_file key_info \        # Encryption key file
+    -hls_playlist_type vod \             # Video on demand (not live)
+    -hls_segment_filename segment_%03d.ts \ # Name format for segments
+    -hls_flags independent_segments \     # Each segment can play alone
+    -hls_base_url segments/ \            # Where to find segments
+    -c copy \                            # Copy video without re-encoding
+    stream.m3u8                          # Output playlist file</pre>
+                </div>
+            </li>
+        </ol>
+
+        <div class="tip">
+            <strong>Understanding FFmpeg Parameters:</strong>
+            <ul>
+                <li><code>-hls_time</code>: How long each video chunk should be</li>
+                <li><code>-c copy</code>: Copy video without quality loss</li>
+                <li><code>-hls_flags</code>: Special settings for HLS</li>
+                <li><code>-hls_base_url</code>: Where to find video segments</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>serve.py</h3>
+    <div class="function-doc">
+        <h4>Purpose:</h4>
+        <p>Creates a web server to stream your videos to browsers.</p>
+
+        <h4>Key Features:</h4>
+        <div class="code-block" data-title="Server Configuration">
+            <pre>
+class HLSRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        # Set up file types for streaming
+        mimetypes.add_type('application/vnd.apple.mpegurl', '.m3u8')
+        mimetypes.add_type('video/mp2t', '.ts')</pre>
+        </div>
+
+        <h4>Important Settings:</h4>
+        <ul>
+            <li>Port: 8000 (http://localhost:8000)</li>
+            <li>CORS: Enabled for all origins</li>
+            <li>Caching: 
+                <ul>
+                    <li>Playlists: No cache (always fresh)</li>
+                    <li>Segments: 1 year (for better performance)</li>
+                </ul>
+            </li>
+        </ul>
+
+        <div class="warning">
+            <strong>Security Note:</strong> This server is for local use only. Don't expose it to the internet without proper security measures.
+        </div>
+    </div>
+
+    <h3>player.html</h3>
+    <div class="function-doc">
+        <h4>Purpose:</h4>
+        <p>A web-based video player that can play your converted videos.</p>
+
+        <h4>Features:</h4>
+        <ul>
+            <li>Video.js player with HLS support</li>
+            <li>Automatic video list loading</li>
+            <li>Error handling and status messages</li>
+            <li>Responsive design (works on all screens)</li>
+        </ul>
+
+        <div class="code-block" data-title="Player Setup">
+            <pre>
+const player = videojs('player', {
+    controls: true,      // Show video controls
+    fluid: true,        // Responsive sizing
+    html5: {
+        vhs: {
+            overrideNative: true,           // Use Video.js HLS player
+            enableLowInitialPlaylist: true  // Start playback faster
+        }
+    }
+});</pre>
+        </div>
+
+        <div class="code-block" data-title="Video Loading">
+            <pre>
+async function loadVideoList() {
+    // Fetch list of videos from server
+    const response = await fetch('/output');
+    const text = await response.text();
+    
+    // Parse HTML directory listing
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    
+    // Find video folders
+    const links = Array.from(doc.querySelectorAll('a'))
+        .filter(a => a.href.endsWith('/'))
+        .map(a => a.textContent.replace('/', ''));
+
+    // Add to dropdown menu
+    links.forEach(video => {
+        const option = document.createElement('option');
+        option.value = video;
+        option.textContent = video;
+        videoSelect.appendChild(option);
+    });
+}</pre>
+        </div>
+    </div>
+
+    <h2 id="usage">Usage Guide</h2>
+    <div class="workflow">
+        <h3>Step-by-Step Instructions:</h3>
+        
+        <h4>1. Converting Videos</h4>
+        <ol>
+            <li>Create a folder called <code>input</code> in your ffmpeg folder</li>
+            <li>Copy your MP4 videos into the input folder</li>
+            <li>Double-click <code>generate.bat</code>
+                <div class="tip">
+                    <strong>Tip:</strong> You can also run <code>python generate.py</code> in Command Prompt
+                </div>
+            </li>
+            <li>Wait for conversion to complete
+                <div class="note">
+                    <strong>Note:</strong> Conversion time depends on video size and your computer's speed
+                </div>
+            </li>
+        </ol>
+
+        <h4>2. Starting the Server</h4>
+        <ol>
+            <li>Double-click <code>serve.bat</code></li>
+            <li>Wait for the message "Serving at http://localhost:8000"</li>
+            <li>Keep the command window open while streaming</li>
+        </ol>
+
+        <h4>3. Playing Videos</h4>
+        <ol>
+            <li>Open your web browser</li>
+            <li>Go to <code>http://localhost:8000/player.html</code></li>
+            <li>Select a video from the dropdown menu</li>
+            <li>Click the play button</li>
+        </ol>
+
+        <div class="warning">
+            <strong>Common Issues:</strong>
+            <ul>
+                <li>Black screen: Check if the video converted properly</li>
+                <li>No video in dropdown: Make sure the server is running</li>
+                <li>Playback error: Check browser console for details</li>
+            </ul>
+        </div>
+    </div>
+
+    <h2 id="troubleshooting">Troubleshooting</h2>
+    <div class="function-doc">
+        <h3>Common Problems and Solutions:</h3>
+        
+        <h4>1. FFmpeg Not Found</h4>
+        <div class="code-block" data-title="Error Message">
+            <pre>Error: FFmpeg not found. Please ensure FFmpeg is installed at C:\ffmpeg</pre>
+        </div>
+        <p>Solution:</p>
+        <ul>
+            <li>Check if FFmpeg is installed in C:\ffmpeg</li>
+            <li>Verify ffmpeg.exe exists in that folder</li>
+            <li>Try running ffmpeg.exe directly to check installation</li>
+        </ul>
+
+        <h4>2. Video Won't Play</h4>
+        <p>Check these common causes:</p>
+        <ul>
+            <li>Server not running (start serve.bat)</li>
+            <li>Wrong video format (must be MP4)</li>
+            <li>Browser doesn't support HLS (use Chrome/Firefox)</li>
+        </ul>
+
+        <h4>3. Conversion Errors</h4>
+        <p>If generate.py shows errors:</p>
+        <ul>
+            <li>Make sure input video is a valid MP4</li>
+            <li>Check available disk space</li>
+            <li>Try closing other programs using the video</li>
+        </ul>
+    </div>
+
+    <div class="bottom-line">
+        <h3>Final Thoughts</h3>
+        <p>This HLS conversion system is designed to be:</p>
+        <ul>
+            <li><strong>Simple:</strong> Easy to set up and use</li>
+            <li><strong>Efficient:</strong> No quality loss during conversion</li>
+            <li><strong>Secure:</strong> Videos are encrypted by default</li>
+            <li><strong>Reliable:</strong> Based on proven technologies (FFmpeg + Video.js)</li>
+        </ul>
+        <p>Perfect for:</p>
+        <ul>
+            <li>Local video streaming</li>
+            <li>Educational content delivery</li>
+            <li>Small to medium-sized video libraries</li>
+            <li>Learning about video streaming technology</li>
+        </ul>
+        <p>Remember: This is a development/learning tool. For production use, consider additional security measures and a more robust server setup.</p>
+    </div>
+
+</body>
+</html> 
