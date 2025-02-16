@@ -50,6 +50,16 @@ def index():
         <html>
             <head>
                 <title>Video Library</title>
+                <script>
+                    // URL encoding polyfill
+                    if (!window.encodeURIComponent) {{
+                        window.encodeURIComponent = function(str) {{
+                            return encodeURI(str).replace(/[!'()*]/g, function(c) {{
+                                return '%' + c.charCodeAt(0).toString(16);
+                            }});
+                        }};
+                    }}
+                </script>
                 <style>
                     body {{ 
                         font-family: Arial, sans-serif;
