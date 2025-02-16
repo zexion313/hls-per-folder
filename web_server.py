@@ -255,26 +255,31 @@ def proxy(video_path):
     try:
         # Log the incoming request
         logger.info(f"Proxy request for: {video_path}")
+        logger.info(f"Request headers: {dict(request.headers)}")
         
         # Construct the full path in storage
-        if video_path.startswith('segments/'):
-            # If it's a segment, we need to prepend the video name path
-            video_name = request.args.get('video')
-            if not video_name:
-                # Try to extract video name from referer
-                referer = request.headers.get('Referer', '')
-                if 'player?video=' in referer:
-                    video_name = referer.split('player?video=')[1].split('&')[0]
-            
-            if video_name:
+        storage_path = video_path
+        video_name = None
+        
+        # Try to get video name from query parameter
+        video_name = request.args.get('video')
+        
+        # If no video name in query, try to get from referer
+        if not video_name:
+            referer = request.headers.get('Referer', '')
+            logger.info(f"Referer: {referer}")
+            if 'player?video=' in referer:
+                video_name = urllib.parse.unquote(referer.split('player?video=')[1].split('&')[0])
+                logger.info(f"Extracted video name from referer: {video_name}")
+        
+        # If we have a video name and this is a segment request, construct the full path
+        if video_name:
+            if 'segments/' in video_path or video_path.endswith('.ts'):
                 storage_path = f"videos/{video_name}/{video_path}"
-            else:
-                logger.error("Could not determine video name for segment request")
-                return "Video name not found", 400
-        else:
-            storage_path = video_path
-
-        logger.info(f"Accessing storage path: {storage_path}")
+            elif not video_path.startswith('videos/'):
+                storage_path = f"videos/{video_name}/{video_path}"
+        
+        logger.info(f"Final storage path: {storage_path}")
         
         # Generate presigned URL
         presigned_url = storage.generate_presigned_url(storage_path)
@@ -285,14 +290,16 @@ def proxy(video_path):
 
         # Fetch content from storage
         response = requests.get(presigned_url, timeout=30)
+        logger.info(f"Storage response status: {response.status_code}")
         
         if response.status_code == 200:
             content = response.content
             
             # If this is an m3u8 file, modify the URLs
             if video_path.endswith('.m3u8'):
-                content = modify_m3u8_urls(content.decode('utf-8'), video_name if 'video_name' in locals() else None)
+                content = modify_m3u8_urls(content.decode('utf-8'), video_name)
                 content = content.encode('utf-8')
+                logger.info(f"Modified m3u8 content for {video_name}")
             
             # Determine content type
             content_type = get_content_type(video_path)
@@ -326,7 +333,7 @@ def get_content_type(path):
     else:
         return 'application/octet-stream'
 
-def modify_m3u8_urls(content, video_name=None):
+def modify_m3u8_urls(content, video_name):
     """Modify URLs in m3u8 file to use our proxy"""
     lines = content.split('\n')
     modified_lines = []
@@ -336,11 +343,7 @@ def modify_m3u8_urls(content, video_name=None):
         if line.endswith('.ts') or line.endswith('.m3u8') or line.endswith('.key'):
             # Convert the segment path to our proxy URL
             if not line.startswith('http'):
-                if video_name and line.startswith('segments/'):
-                    # For segment files, add video parameter
-                    modified_lines.append(f'/proxy/{line}?video={video_name}')
-                else:
-                    modified_lines.append(f'/proxy/{line}')
+                modified_lines.append(f'/proxy/{line}?video={video_name}')
             else:
                 modified_lines.append(line)
         else:

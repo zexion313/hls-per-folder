@@ -203,7 +203,14 @@ class VideoPlayerTester:
                 console.log(message);
             }}
 
+            let hls = null;
+
             function initPlayer() {{
+                if (hls) {{
+                    hls.destroy();
+                    hls = null;
+                }}
+
                 if (!window.Hls) {{
                     showError('HLS.js failed to load. Please check your internet connection.');
                     return;
@@ -218,9 +225,9 @@ class VideoPlayerTester:
                 updateStatus('HLS supported, creating player...');
                 
                 try {{
-                    const hls = new Hls({{
+                    hls = new Hls({{
                         debug: true,
-                        enableWorker: false,
+                        enableWorker: true,
                         maxBufferLength: 30,
                         maxMaxBufferLength: 600,
                         maxBufferSize: 60 * 1000 * 1000,
@@ -231,7 +238,9 @@ class VideoPlayerTester:
                         levelLoadingTimeOut: 20000,
                         levelLoadingMaxRetry: 4,
                         fragLoadingTimeOut: 20000,
-                        fragLoadingMaxRetry: 6
+                        fragLoadingMaxRetry: 6,
+                        startFragPrefetch: true,
+                        testBandwidth: true
                     }});
 
                     hls.on(Hls.Events.MEDIA_ATTACHED, function() {{
@@ -261,6 +270,8 @@ class VideoPlayerTester:
                                 default:
                                     updateStatus('Fatal error: ' + data.type);
                                     showError('Fatal HLS Error:\\n' + JSON.stringify(data, null, 2));
+                                    // Try to reinitialize player
+                                    setTimeout(initPlayer, 2000);
                                     break;
                             }}
                         }} else {{
@@ -275,7 +286,7 @@ class VideoPlayerTester:
                     // Load the source after a small delay to ensure proper initialization
                     setTimeout(() => {{
                         updateStatus('Loading source...');
-                        hls.loadSource('/proxy/{base_path}/stream.m3u8');
+                        hls.loadSource('/proxy/videos/{video_name}/stream.m3u8');
                     }}, 100);
 
                     // Add quality level selection
