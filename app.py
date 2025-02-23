@@ -240,208 +240,245 @@ def create_app():
             return "Video name not specified", 400
 
         html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Playing {video_name}</title>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 20px;
-                    font-family: Arial, sans-serif;
-                    background: #f0f0f0;
-                }}
-                .container {{
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    background: white;
-                    padding: 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }}
-                .video-container {{
-                    margin-top: 20px;
-                    margin-bottom: 20px;
-                }}
-                .info-section {{
-                    margin-top: 20px;
-                    padding: 15px;
-                    background: #f8f9fa;
-                    border-radius: 4px;
-                }}
-                .error-log {{
-                    background: #fff3f3;
-                    padding: 10px;
-                    margin-top: 10px;
-                    border-radius: 4px;
-                    display: none;
-                }}
-                #videoElement {{
-                    width: 100%;
-                    max-width: 1000px;
-                    margin: 0 auto;
-                    display: block;
-                }}
-                .status {{
-                    margin-top: 10px;
-                    padding: 10px;
-                    background: #e8f5e9;
-                    border-radius: 4px;
-                }}
-                .back-button {{
-                    display: inline-block;
-                    padding: 10px 20px;
-                    background: #4a90e2;
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 4px;
-                    margin-bottom: 20px;
-                }}
-                .back-button:hover {{
-                    background: #357abd;
-                }}
-                .source-info {{
-                    margin-top: 10px;
-                    padding: 15px;
-                    background: #fff;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                }}
-                .note {{
-                    font-style: italic;
-                    color: #666;
-                    margin-top: 10px;
-                    font-size: 0.9em;
-                }}
-                code {{
-                    background: #eee;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    font-family: monospace;
-                    word-break: break-all;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <a href="/" class="back-button">← Back to Library</a>
-                <h1>Playing: {video_name}</h1>
-                
-                <div class="video-container">
-                    <video id="videoElement" controls></video>
-                </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Playing {video_name}</title>
+    <!-- Video.js CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.3/video-js.min.css" rel="stylesheet">
+    <!-- Video.js quality selector CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/4.0.0/videojs-contrib-quality-levels.css" rel="stylesheet">
+    <style>
+        body {{
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .video-container {{
+            margin-top: 20px;
+            margin-bottom: 20px;
+            position: relative;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }}
+        .info-section {{
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }}
+        .error-log {{
+            background: #fff3f3;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            display: none;
+        }}
+        .status {{
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 4px;
+        }}
+        .back-button {{
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4a90e2;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }}
+        .back-button:hover {{
+            background: #357abd;
+        }}
+        .source-info {{
+            margin-top: 10px;
+            padding: 15px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }}
+        .note {{
+            font-style: italic;
+            color: #666;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }}
+        code {{
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+        }}
+        /* Custom Video.js theme */
+        .video-js {{
+            width: 100%;
+            height: 0;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }}
+        .video-js .vjs-big-play-button {{
+            background-color: rgba(74, 144, 226, 0.9);
+            border-color: #4a90e2;
+        }}
+        .video-js .vjs-control-bar {{
+            background-color: rgba(43, 51, 63, 0.9);
+        }}
+        .video-js .vjs-slider {{
+            background-color: rgba(255, 255, 255, 0.3);
+        }}
+        .video-js .vjs-play-progress {{
+            background-color: #4a90e2;
+        }}
+        .video-js .vjs-volume-level {{
+            background-color: #4a90e2;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-button">← Back to Library</a>
+        <h1>Playing: {video_name}</h1>
+        
+        <div class="video-container">
+            <video id="videoPlayer" 
+                   class="video-js vjs-default-skin vjs-big-play-centered"
+                   controls
+                   preload="auto"
+                   data-setup='{{"fluid": true}}'>
+                <source src="/proxy/videos/{video_name}/stream.m3u8" type="application/x-mpegURL">
+                <p class="vjs-no-js">
+                    To view this video please enable JavaScript, and consider upgrading to a
+                    web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+                </p>
+            </video>
+        </div>
 
-                <div class="status" id="status">
-                    Status: Initializing player...
-                </div>
+        <div class="status" id="status">
+            Status: Initializing player...
+        </div>
 
-                <div class="error-log" id="errorLog">
-                    <h3>Error Log:</h3>
-                    <pre id="errorContent"></pre>
-                </div>
+        <div class="error-log" id="errorLog">
+            <h3>Error Log:</h3>
+            <pre id="errorContent"></pre>
+        </div>
 
-                <div class="info-section">
-                    <h2>Video Source Information</h2>
-                    <div class="source-info">
-                        <p><strong>Video Name:</strong> {video_name}</p>
-                        <p><strong>Stream Type:</strong> HLS (HTTP Live Streaming)</p>
-                        <p><strong>CDN Provider:</strong> Leaseweb CDN</p>
-                        <p><strong>Source URL:</strong><br>
-                        <code>https://di-yusrkfqf.leasewebultracdn.com/videos/{video_name}/stream.m3u8</code></p>
-                        <p class="note">This video is served through Leaseweb's Content Delivery Network (CDN) for optimal streaming performance and global availability.</p>
-                    </div>
-                </div>
+        <div class="info-section">
+            <h2>Video Source Information</h2>
+            <div class="source-info">
+                <p><strong>Video Name:</strong> {video_name}</p>
+                <p><strong>Stream Type:</strong> HLS (HTTP Live Streaming)</p>
+                <p><strong>CDN Provider:</strong> Leaseweb CDN</p>
+                <p><strong>Source URL:</strong><br>
+                <code>https://di-yusrkfqf.leasewebultracdn.com/videos/{video_name}/stream.m3u8</code></p>
+                <p class="note">This video is served through Leaseweb's Content Delivery Network (CDN) for optimal streaming performance and global availability.</p>
             </div>
+        </div>
+    </div>
 
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {{
-                    const video = document.getElementById('videoElement');
-                    const errorLog = document.getElementById('errorLog');
-                    const errorContent = document.getElementById('errorContent');
-                    const status = document.getElementById('status');
-                    
-                    function showError(message) {{
-                        errorLog.style.display = 'block';
-                        errorContent.textContent = message;
-                        console.error(message);
+    <!-- Video.js JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.3/video.min.js"></script>
+    <!-- Video.js HLS tech -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.15.0/videojs-contrib-hls.min.js"></script>
+    <!-- Video.js quality selector -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/4.0.0/videojs-contrib-quality-levels.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-http-source-selector/1.1.6/videojs-http-source-selector.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {{
+            const status = document.getElementById('status');
+            const errorLog = document.getElementById('errorLog');
+            const errorContent = document.getElementById('errorContent');
+            
+            function showError(message) {{
+                errorLog.style.display = 'block';
+                errorContent.textContent = message;
+                console.error(message);
+            }}
+
+            function updateStatus(message) {{
+                status.textContent = 'Status: ' + message;
+                console.log(message);
+            }}
+
+            // Initialize Video.js player
+            const player = videojs('videoPlayer', {{
+                html5: {{
+                    hls: {{
+                        overrideNative: true,
+                        enableLowInitialPlaylist: true,
+                        smoothQualityChange: true,
+                        handleManifestRedirects: true,
+                        allowSeeksWithinUnsafeLiveWindow: true
                     }}
-
-                    function updateStatus(message) {{
-                        status.textContent = 'Status: ' + message;
-                        console.log(message);
+                }},
+                controls: true,
+                autoplay: false,
+                preload: 'auto',
+                responsive: true,
+                fluid: true,
+                playbackRates: [0.5, 1, 1.5, 2],
+                plugins: {{
+                    httpSourceSelector: {{
+                        default: 'auto'
                     }}
+                }}
+            }});
 
-                    if (!window.Hls) {{
-                        showError('HLS.js failed to load. Please check your internet connection.');
-                        return;
-                    }}
+            // Add quality selector plugin
+            player.httpSourceSelector();
 
-                    if (!Hls.isSupported()) {{
-                        updateStatus('HLS not supported in this browser');
-                        showError('Your browser does not support HLS playback');
-                        return;
-                    }}
+            // Event handlers
+            player.on('ready', function() {{
+                updateStatus('Player ready');
+            }});
 
-                    const hls = new Hls({{
-                        debug: false,
-                        enableWorker: true,
-                        lowLatencyMode: false,
-                        backBufferLength: 90
-                    }});
+            player.on('play', function() {{
+                updateStatus('Playing');
+            }});
 
-                    hls.on(Hls.Events.MEDIA_ATTACHED, function() {{
-                        updateStatus('Media attached, loading manifest...');
-                    }});
+            player.on('pause', function() {{
+                updateStatus('Paused');
+            }});
 
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {{
-                        updateStatus('Manifest loaded, starting playback...');
-                        video.play().catch(function(error) {{
-                            console.warn('Autoplay prevented:', error);
-                            updateStatus('Ready to play (click play button)');
-                        }});
-                    }});
+            player.on('waiting', function() {{
+                updateStatus('Buffering...');
+            }});
 
-                    hls.on(Hls.Events.ERROR, function(event, data) {{
-                        if (data.fatal) {{
-                            switch(data.type) {{
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    updateStatus('Network error, trying to recover...');
-                                    hls.startLoad();
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    updateStatus('Media error, trying to recover...');
-                                    hls.recoverMediaError();
-                                    break;
-                                default:
-                                    updateStatus('Fatal error: ' + data.type);
-                                    showError('Fatal error: ' + data.details);
-                                    break;
-                            }}
-                        }}
-                    }});
+            player.on('error', function(error) {{
+                updateStatus('Error occurred');
+                showError('Player Error: ' + player.error().message);
+            }});
 
-                    hls.attachMedia(video);
-                    hls.loadSource('/proxy/videos/{video_name}/stream.m3u8');
+            // Quality level tracking
+            player.on('qualityLevel', function() {{
+                const level = player.qualityLevels()[player.qualityLevels().selectedIndex];
+                if (level) {{
+                    updateStatus(`Playing at ${Math.round(level.bitrate / 1000)}kbps`);
+                }}
+            }});
 
-                    video.addEventListener('playing', function() {{
-                        updateStatus('Playing');
-                    }});
-
-                    video.addEventListener('waiting', function() {{
-                        updateStatus('Buffering...');
-                    }});
-
-                    video.addEventListener('error', function(e) {{
-                        updateStatus('Video error!');
-                        showError('Video Error: ' + e.message);
-                    }});
-                }});
-            </script>
-        </body>
-        </html>
-        """
-        return html
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', function() {{
+                player.dispose();
+            }});
+        }});
+    </script>
+</body>
+</html>
+    """
+    return html
 
     @app.route('/proxy/<path:target_path>')
     def proxy_request(target_path):
