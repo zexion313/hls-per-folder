@@ -476,12 +476,12 @@ def create_app():
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                     'Accept': '*/*',
-                    'Accept-Encoding': 'gzip',
+                    'Accept-Encoding': 'identity',  # Request uncompressed content
                     'Connection': 'keep-alive'
                 }
 
                 # Make the request to the CDN
-                response = requests.get(cdn_url, headers=headers, timeout=30)
+                response = requests.get(cdn_url, headers=headers, timeout=30, stream=True)
                 logger.info(f"CDN response status: {response.status_code}")
                 logger.info(f"CDN response headers: {dict(response.headers)}")
 
@@ -489,66 +489,69 @@ def create_app():
                     content = response.content
                     logger.info(f"Received content length: {len(content)} bytes")
 
-                    try:
-                        # If this is an m3u8 file, modify the URLs
-                        if target_path.endswith('.m3u8'):
-                            try:
-                                decoded_content = content.decode('utf-8')
-                                logger.info("=== Original m3u8 content ===")
-                                logger.info(decoded_content)
-                                logger.info("=== End original m3u8 content ===")
-                                
-                                # Basic content validation
-                                if not decoded_content.strip():
-                                    logger.error("Empty m3u8 content received")
-                                    return {"error": "Invalid Content", "message": "Empty m3u8 file received"}, 500
+                    # If this is an m3u8 file, modify the URLs
+                    if target_path.endswith('.m3u8'):
+                        try:
+                            decoded_content = content.decode('utf-8')
+                            logger.info("=== Original m3u8 content ===")
+                            logger.info(decoded_content)
+                            logger.info("=== End original m3u8 content ===")
+                            
+                            # Basic content validation
+                            if not decoded_content.strip():
+                                logger.error("Empty m3u8 content received")
+                                return {"error": "Invalid Content", "message": "Empty m3u8 file received"}, 500
 
-                                # Check for HLS header
-                                if not decoded_content.strip().startswith('#EXTM3U'):
-                                    logger.error("Invalid m3u8 content - missing #EXTM3U header")
-                                    return {"error": "Invalid Content", "message": "Invalid m3u8 file format"}, 500
+                            # Check for HLS header
+                            if not decoded_content.strip().startswith('#EXTM3U'):
+                                logger.error("Invalid m3u8 content - missing #EXTM3U header")
+                                return {"error": "Invalid Content", "message": "Invalid m3u8 file format"}, 500
 
-                                # Modify URLs
-                                content = modify_m3u8_urls(decoded_content, video_name)
-                                content = content.encode('utf-8')
-                                
-                                logger.info("=== Modified m3u8 content ===")
-                                logger.info(content.decode('utf-8'))
-                                logger.info("=== End modified m3u8 content ===")
-                                
-                            except UnicodeDecodeError as e:
-                                logger.error(f"Failed to decode m3u8 content: {str(e)}")
-                                return {"error": "Processing Error", "message": "Failed to decode m3u8 content"}, 500
-                            except Exception as e:
-                                logger.error(f"Error processing m3u8: {str(e)}", exc_info=True)
-                                return {"error": "Processing Error", "message": f"Failed to process m3u8: {str(e)}"}, 500
+                            # Modify URLs
+                            content = modify_m3u8_urls(decoded_content, video_name)
+                            content = content.encode('utf-8')
+                            
+                            logger.info("=== Modified m3u8 content ===")
+                            logger.info(content.decode('utf-8'))
+                            logger.info("=== End modified m3u8 content ===")
+                            
+                        except UnicodeDecodeError as e:
+                            logger.error(f"Failed to decode m3u8 content: {str(e)}")
+                            return {"error": "Processing Error", "message": "Failed to decode m3u8 content"}, 500
+                        except Exception as e:
+                            logger.error(f"Error processing m3u8: {str(e)}", exc_info=True)
+                            return {"error": "Processing Error", "message": f"Failed to process m3u8: {str(e)}"}, 500
 
-                        # Determine content type
-                        content_type = get_content_type(target_path)
-                        logger.info(f"Content-Type determined: {content_type}")
+                    # Determine content type
+                    content_type = get_content_type(target_path)
+                    logger.info(f"Content-Type determined: {content_type}")
 
-                        # Create response with proper headers
-                        flask_response = Response(content)
-                        flask_response.headers['Content-Type'] = content_type
-                        flask_response.headers['Content-Length'] = len(content)
-                        flask_response.headers['Access-Control-Allow-Origin'] = '*'
-                        flask_response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-                        flask_response.headers['Access-Control-Allow-Headers'] = '*'
-                        flask_response.headers['Cache-Control'] = 'no-cache'
-                        
-                        # Remove any content encoding header
-                        if 'Content-Encoding' in flask_response.headers:
-                            del flask_response.headers['Content-Encoding']
-                        
-                        logger.info("=== Response headers ===")
-                        logger.info(dict(flask_response.headers))
-                        logger.info("=== End response headers ===")
-                        
-                        return flask_response
-                        
-                    except Exception as e:
-                        logger.error(f"Error creating response: {str(e)}", exc_info=True)
-                        return {"error": "Response Error", "message": str(e)}, 500
+                    # Create response with proper headers
+                    flask_response = Response(content)
+                    flask_response.headers['Content-Type'] = content_type
+                    flask_response.headers['Content-Length'] = len(content)
+                    flask_response.headers['Access-Control-Allow-Origin'] = '*'
+                    flask_response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+                    flask_response.headers['Access-Control-Allow-Headers'] = '*'
+                    flask_response.headers['Cache-Control'] = 'public, max-age=3600'
+                    
+                    logger.info("=== Response headers ===")
+                    logger.info(dict(flask_response.headers))
+                    logger.info("=== End response headers ===")
+                    
+                    return flask_response
+                    
+                elif response.status_code == 501:
+                    logger.error("CDN returned 501 Not Implemented - retrying without compression")
+                    # Retry without any encoding
+                    headers['Accept-Encoding'] = 'identity'
+                    response = requests.get(cdn_url, headers=headers, timeout=30)
+                    if response.status_code == 200:
+                        return handle_cdn_response(response, target_path, video_name)
+                    else:
+                        error_msg = f"CDN retry failed with status {response.status_code}"
+                        logger.error(error_msg)
+                        return {"error": "CDN Error", "message": error_msg}, response.status_code
                 else:
                     error_msg = f"CDN returned status {response.status_code}"
                     if response.content:
@@ -566,6 +569,53 @@ def create_app():
         except Exception as e:
             logger.error(f"Proxy error: {str(e)}", exc_info=True)
             return {"error": "Internal Server Error", "message": str(e)}, 500
+
+    def handle_cdn_response(response, target_path, video_name):
+        """Helper function to process CDN response"""
+        try:
+            content = response.content
+            logger.info(f"Received content length: {len(content)} bytes")
+
+            if target_path.endswith('.m3u8'):
+                try:
+                    decoded_content = content.decode('utf-8')
+                    logger.info("=== Original m3u8 content ===")
+                    logger.info(decoded_content)
+                    logger.info("=== End original m3u8 content ===")
+                    
+                    if not decoded_content.strip():
+                        logger.error("Empty m3u8 content received")
+                        return {"error": "Invalid Content", "message": "Empty m3u8 file received"}, 500
+
+                    if not decoded_content.strip().startswith('#EXTM3U'):
+                        logger.error("Invalid m3u8 content - missing #EXTM3U header")
+                        return {"error": "Invalid Content", "message": "Invalid m3u8 file format"}, 500
+
+                    content = modify_m3u8_urls(decoded_content, video_name)
+                    content = content.encode('utf-8')
+                    
+                    logger.info("=== Modified m3u8 content ===")
+                    logger.info(content.decode('utf-8'))
+                    logger.info("=== End modified m3u8 content ===")
+                    
+                except UnicodeDecodeError as e:
+                    logger.error(f"Failed to decode m3u8 content: {str(e)}")
+                    return {"error": "Processing Error", "message": "Failed to decode m3u8 content"}, 500
+
+            content_type = get_content_type(target_path)
+            flask_response = Response(content)
+            flask_response.headers['Content-Type'] = content_type
+            flask_response.headers['Content-Length'] = len(content)
+            flask_response.headers['Access-Control-Allow-Origin'] = '*'
+            flask_response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+            flask_response.headers['Access-Control-Allow-Headers'] = '*'
+            flask_response.headers['Cache-Control'] = 'public, max-age=3600'
+            
+            return flask_response
+
+        except Exception as e:
+            logger.error(f"Error handling CDN response: {str(e)}", exc_info=True)
+            return {"error": "Processing Error", "message": str(e)}, 500
 
     def get_content_type(path):
         """Determine content type based on file extension"""

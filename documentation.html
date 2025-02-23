@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HLS Video Processing and Streaming System Documentation</title>
+    <title>Video Streaming System Documentation</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,1243 +12,270 @@
             margin: 0 auto;
             padding: 20px;
             color: #333;
+            background: #f9f9f9;
         }
-        h1, h2, h3 {
-            color: #2c3e50;
+        h1, h2, h3 { 
+            color: #2c3e50; 
+            margin-top: 1.5em;
         }
         .section {
             margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        code {
-            background: #eee;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
+            padding: 25px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         pre {
             background: #f4f4f4;
             padding: 15px;
             border-radius: 8px;
             overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .diagram {
+            font-family: monospace;
+            white-space: pre;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 15px 0;
         }
         .note {
             background: #e1f5fe;
             padding: 15px;
             border-left: 4px solid #03a9f4;
             margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .tip {
+            background: #f0f4c3;
+            padding: 15px;
+            border-left: 4px solid #cddc39;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
         }
         .warning {
-            background: #fff3e0;
+            background: #ffebee;
             padding: 15px;
-            border-left: 4px solid #ff9800;
+            border-left: 4px solid #f44336;
+            margin: 15px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
             margin: 15px 0;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-        }
-        th, td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        th {
-            background: #f5f5f5;
-        }
-        .toc {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .toc ul {
-            list-style-type: none;
-            padding-left: 20px;
-        }
-        .example-box {
-            background: #f0f4f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid #4a90e2;
-        }
-        .code-explanation {
-            margin-left: 20px;
-            color: #666;
-            font-size: 0.9em;
-        }
-        .step-by-step {
-            counter-reset: step;
-            list-style-type: none;
-            padding-left: 0;
-        }
-        .step-by-step li {
-            position: relative;
-            padding: 10px 0 10px 35px;
-            margin-bottom: 15px;
-        }
-        .step-by-step li:before {
-            content: counter(step);
-            counter-increment: step;
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            background: #4a90e2;
-            color: white;
-            text-align: center;
-            line-height: 25px;
-        }
-        .diagram {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin: 15px 0;
-        }
-        .toc-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .toc-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .toc-section h3 {
-            color: #2c3e50;
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e9ecef;
-        }
-        .script-info {
-            background: #e8f5e9;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .script-info p {
-            margin: 5px 0;
-        }
-        .best-practices-box {
-            background: #fff3e0;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 30px;
-            border-left: 4px solid #ff9800;
-        }
-        .example-box {
-            border: 1px solid #e0e0e0;
-            margin: 20px 0;
-        }
-        .example-box h4 {
-            background: #f5f5f5;
-            margin: 0;
-            padding: 10px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .workflow-diagram {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #28a745;
-        }
-        .workflow-diagram pre {
-            background: white;
-            padding: 15px;
-            border-radius: 4px;
-        }
-        .process-steps {
-            background: #fff8e1;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #ffa000;
-        }
-        .process-steps ol {
-            counter-reset: step;
-            list-style-type: none;
-            padding-left: 0;
-        }
-        .process-steps li {
-            margin-bottom: 15px;
-        }
-        .process-steps li strong {
-            color: #2c3e50;
-        }
-        .usage-example {
-            background: #e8eaf6;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #3f51b5;
-        }
-        .usage-example pre {
-            background: white;
-        }
-        .intro-box {
-            background: #e3f2fd;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #2196f3;
-        }
-        .intro-box h4 {
-            color: #1565c0;
-            margin-top: 0;
-        }
-        .intro-box p {
-            margin-bottom: 0;
-            color: #333;
+        .term {
+            font-weight: bold;
+            color: #2196f3;
         }
     </style>
 </head>
 <body>
-    <h1>HLS Video Processing and Streaming System Documentation</h1>
+    <h1>Video Streaming System Documentation</h1>
+    
+    <div class="section">
+        <h2>1. Introduction to Video Streaming</h2>
+        <p>Welcome! This documentation will help you understand how our video streaming system works. Let's start with some basic concepts:</p>
 
-    <div class="toc">
-    <h2>Table of Contents</h2>
-        <div class="toc-grid">
-            <div class="toc-section">
-                <h3>Getting Started</h3>
-                <ul>
-                    <li><a href="#overview">1. System Overview</a>
-                        <ul>
-                            <li><a href="#what-is-hls">Understanding HLS Streaming</a></li>
-                            <li><a href="#why-hls">Benefits and Features</a></li>
-                            <li><a href="#system-architecture">Architecture Overview</a></li>
-    </ul>
-                    </li>
-                    <li><a href="#quick-start">2. Quick Start Guide</a>
-                        <ul>
-                            <li><a href="#prerequisites">System Requirements</a></li>
-                            <li><a href="#installation">Basic Setup</a></li>
-                            <li><a href="#first-steps">First Steps</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-            
-            <div class="toc-section">
-                <h3>Core Components</h3>
-                <ul>
-                    <li><a href="#configuration">3. System Configuration</a>
-                        <ul>
-                            <li><a href="#env-vars">Environment Setup</a></li>
-                            <li><a href="#config-file">Configuration Files</a></li>
-                            <li><a href="#storage-config">Storage Settings</a></li>
-                        </ul>
-                    </li>
-                    <li><a href="#components">4. Key Components</a>
-                        <ul>
-                            <li><a href="#storage">Storage Management</a></li>
-                            <li><a href="#video-processor">Video Processing</a></li>
-                            <li><a href="#web-server">Web Services</a></li>
-                            <li><a href="#player">Video Playback</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
+        <h3>What is Video Streaming?</h3>
+        <p>Think of video streaming like watching water flow through a pipe. Instead of downloading the entire video file at once (like filling a bucket), streaming sends small pieces of the video one after another (like a steady stream of water). This allows you to start watching before the entire file is downloaded!</p>
 
-            <div class="toc-section">
-                <h3>Usage & Development</h3>
-                <ul>
-                    <li><a href="#usage">5. Usage Guidelines</a>
-                        <ul>
-                            <li><a href="#local-usage">Local Development</a></li>
-                            <li><a href="#production-usage">Production Usage</a></li>
-                            <li><a href="#best-practices">Best Practices</a></li>
-        </ul>
-                    </li>
-                    <li><a href="#deployment">6. Deployment Guide</a>
-                        <ul>
-                            <li><a href="#railway-deploy">Railway Platform</a></li>
-                            <li><a href="#manual-deploy">Manual Setup</a></li>
-                            <li><a href="#monitoring">System Monitoring</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="toc-section">
-                <h3>Reference</h3>
-                <ul>
-                    <li><a href="#api">7. API Documentation</a>
-                        <ul>
-                            <li><a href="#storage-api">Storage APIs</a></li>
-                            <li><a href="#processor-api">Processor APIs</a></li>
-                            <li><a href="#server-api">Server Endpoints</a></li>
-                        </ul>
-                    </li>
-                    <li><a href="#examples">8. Code Examples</a>
-                        <ul>
-                            <li><a href="#upload-example">Storage Operations</a></li>
-                            <li><a href="#process-example">Video Processing</a></li>
-                            <li><a href="#stream-example">Video Streaming</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" id="overview">
-        <h2>1. System Overview</h2>
-        
-        <div id="what-is-hls">
-            <h3>1.1 What is HLS Streaming?</h3>
-            <p>HTTP Live Streaming (HLS) is a video streaming protocol developed by Apple that works by:</p>
+        <div class="note">
+            <h4>Key Terms for Beginners:</h4>
             <ul>
-                <li>Breaking videos into small segments (typically 6-10 seconds each)</li>
-                <li>Creating playlist files (.m3u8) that tell players which segments to play</li>
-                <li>Supporting encryption for secure playback</li>
-                <li>Allowing adaptive bitrate streaming</li>
-            </ul>
-
-            <div class="example-box">
-                <h4>Example HLS Playlist (stream.m3u8):</h4>
-            <pre>
-#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-TARGETDURATION:6
-#EXT-X-MEDIA-SEQUENCE:0
-#EXT-X-PLAYLIST-TYPE:VOD
-#EXT-X-KEY:METHOD=AES-128,URI="key.key"
-#EXTINF:6.000000,
-segments/segment_000.ts
-#EXTINF:6.000000,
-segments/segment_001.ts
-#EXT-X-ENDLIST</pre>
-                <div class="code-explanation">
-                    <p>This playlist file shows:</p>
-                    <ul>
-                        <li><code>#EXT-X-VERSION:3</code> - HLS protocol version</li>
-                        <li><code>#EXT-X-TARGETDURATION:6</code> - Each segment is 6 seconds</li>
-                        <li><code>#EXT-X-KEY</code> - Encryption key location</li>
-                        <li><code>#EXTINF:6.000000,</code> - Duration of next segment</li>
-                    </ul>
-                </div>
-        </div>
-    </div>
-
-        <div id="why-hls">
-            <h3>1.2 Why Use HLS?</h3>
-            <div class="diagram">
-                <h4>Advantages of HLS Streaming:</h4>
-                <ul>
-                    <li><strong>Wide Compatibility</strong>
-                        <ul>
-                            <li>Works on all modern browsers</li>
-                            <li>Native support on iOS devices</li>
-                            <li>Excellent player support (Video.js, HLS.js)</li>
-                </ul>
-            </li>
-                    <li><strong>Adaptive Streaming</strong>
-                <ul>
-                            <li>Automatically adjusts quality based on network conditions</li>
-                            <li>Reduces buffering and playback issues</li>
-                            <li>Better user experience across different devices</li>
-                </ul>
-            </li>
-                    <li><strong>Security</strong>
-                        <ul>
-                            <li>Built-in support for AES-128 encryption</li>
-                            <li>Segment-level encryption</li>
-                            <li>Key rotation capabilities</li>
-                </ul>
-            </li>
-        </ul>
-        </div>
-    </div>
-
-        <div id="system-architecture">
-            <h3>1.3 System Architecture</h3>
-            <div class="diagram">
-                <h4>System Components and Flow:</h4>
-                <pre>
-[Input Video (MP4)]
-        ↓
-[Video Processor (FFmpeg)]
-        ↓
-[Encrypted Segments + Playlists]
-        ↓
-[Leaseweb Storage]
-        ↓
-[Web Server (Flask)]
-        ↓
-[Video Player (HLS.js)]</pre>
-                <div class="code-explanation">
-                    <p>The system follows these steps:</p>
-                    <ol>
-                        <li>User uploads an MP4 video</li>
-                        <li>Video Processor converts it to HLS format</li>
-                        <li>Files are stored in Leaseweb Object Storage</li>
-                        <li>Web Server serves the video library</li>
-                        <li>Player streams content securely</li>
-                    </ol>
-                </div>
-                </div>
-        </div>
-    </div>
-
-    <div class="section" id="setup">
-        <h2>2. Setup and Installation</h2>
-
-        <div id="prerequisites">
-            <h3>2.1 Prerequisites</h3>
-            <div class="example-box">
-                <h4>Required Software:</h4>
-                <ul>
-                    <li><strong>Python 3.7+</strong>
-                        <ul>
-                            <li>Download from: <a href="https://www.python.org/downloads/">python.org</a></li>
-                            <li>Verify installation: <code>python --version</code></li>
-                </ul>
-            </li>
-                    <li><strong>FFmpeg</strong>
-                        <ul>
-                            <li>Download from: <a href="https://ffmpeg.org/download.html">ffmpeg.org</a></li>
-                            <li>Install in: <code>C:\ffmpeg\</code> (Windows) or <code>/usr/local/bin/</code> (Linux)</li>
-                            <li>Verify installation: <code>ffmpeg -version</code></li>
-                </ul>
-            </li>
-                    <li><strong>Git</strong> (for deployment)
-                        <ul>
-                            <li>Download from: <a href="https://git-scm.com/downloads">git-scm.com</a></li>
-                            <li>Verify installation: <code>git --version</code></li>
-                        </ul>
-                    </li>
-                </ul>
-                </div>
-        </div>
-
-        <div id="installation">
-            <h3>2.2 Installation Steps</h3>
-            <ol class="step-by-step">
-                <li>Clone the repository:
-                    <pre>git clone https://github.com/yourusername/video-player-hls.git
-cd video-player-hls</pre>
-                </li>
-                <li>Create a virtual environment:
-                    <pre>python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/Mac
-source venv/bin/activate</pre>
-                </li>
-                <li>Install dependencies:
-                    <pre>pip install -r requirements.txt</pre>
-                </li>
-                <li>Create .env file:
-                    <pre>LEASEWEB_ACCESS_KEY=your_access_key
-LEASEWEB_SECRET_KEY=your_secret_key
-LEASEWEB_BUCKET_NAME=your_bucket_name</pre>
-                </li>
-                <li>Test the installation:
-                    <pre>python test_storage.py</pre>
-            </li>
-        </ol>
-        </div>
-
-        <div id="troubleshooting">
-            <h3>2.3 Common Installation Issues</h3>
-            <div class="example-box">
-                <h4>Problem: FFmpeg Not Found</h4>
-                <pre>Error: FFmpeg not found at C:\ffmpeg\ffmpeg.exe</pre>
-                <div class="code-explanation">
-                    <p><strong>Solutions:</strong></p>
-                    <ol>
-                        <li>Check if FFmpeg is installed in the correct location</li>
-                        <li>Add FFmpeg to system PATH</li>
-                        <li>Update FFMPEG_PATH in config.py</li>
-                    </ol>
-                </div>
-
-                <h4>Problem: Python Dependencies</h4>
-                <pre>Error: No module named 'flask'</pre>
-                <div class="code-explanation">
-                    <p><strong>Solutions:</strong></p>
-                    <ol>
-                        <li>Ensure virtual environment is activated</li>
-                        <li>Reinstall dependencies: <code>pip install -r requirements.txt</code></li>
-                        <li>Check Python version compatibility</li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" id="configuration">
-        <h2>3. Configuration</h2>
-        
-        <div id="env-vars">
-            <h3>3.1 Environment Variables</h3>
-            <div class="example-box">
-                <h4>Required Environment Variables:</h4>
-                <pre>
-# .env file
-LEASEWEB_ACCESS_KEY=your_access_key
-LEASEWEB_SECRET_KEY=your_secret_key
-LEASEWEB_BUCKET_NAME=your_bucket_name
-LEASEWEB_ENDPOINT_URL=https://nl.object-storage.io
-LEASEWEB_REGION=nl</pre>
-                <div class="code-explanation">
-                    <p>Each variable's purpose:</p>
-                    <ul>
-                        <li><code>LEASEWEB_ACCESS_KEY</code>: Your Leaseweb storage access key (required)</li>
-                        <li><code>LEASEWEB_SECRET_KEY</code>: Your Leaseweb storage secret key (required)</li>
-                        <li><code>LEASEWEB_BUCKET_NAME</code>: The name of your storage bucket (defaults to 'private-bucket-nl')</li>
-                        <li><code>LEASEWEB_ENDPOINT_URL</code>: The storage endpoint URL (defaults to 'https://nl.object-storage.io')</li>
-                        <li><code>LEASEWEB_REGION</code>: The storage region (defaults to 'nl')</li>
-            </ul>
-                </div>
-        </div>
-    </div>
-
-        <div id="config-file">
-            <h3>3.2 Configuration File (config.py)</h3>
-            <div class="example-box">
-                <h4>Configuration Settings:</h4>
-                <pre>
-# config.py
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables
-if os.path.exists('.env'):
-    load_dotenv()
-
-# Base directory
-BASE_DIR = Path(__file__).parent
-
-# Leaseweb Storage Configuration
-LEASEWEB_CONFIG = {
-    'endpoint_url': os.getenv('LEASEWEB_ENDPOINT_URL', 'https://nl.object-storage.io'),
-    'bucket_name': os.getenv('LEASEWEB_BUCKET_NAME', 'private-bucket-nl'),
-    'access_key': os.getenv('LEASEWEB_ACCESS_KEY'),
-    'secret_key': os.getenv('LEASEWEB_SECRET_KEY'),
-    'region': os.getenv('LEASEWEB_REGION', 'nl')
-}
-
-# Directory Configuration
-INPUT_DIR = BASE_DIR / 'input'
-OUTPUT_DIR = BASE_DIR / 'output'
-
-# FFmpeg Configuration
-FFMPEG_PATH = os.getenv('FFMPEG_PATH', r"C:\ffmpeg\ffmpeg.exe")
-SEGMENT_DURATION = int(os.getenv('SEGMENT_DURATION', '6'))
-KEY_LENGTH = int(os.getenv('KEY_LENGTH', '16'))</pre>
-                <div class="code-explanation">
-                    <p>Configuration breakdown:</p>
-                    <ul>
-                        <li><strong>Environment Loading</strong>: Loads variables from .env file if it exists</li>
-                        <li><strong>Base Directory</strong>: Sets up project paths</li>
-                        <li><strong>Storage Config</strong>: Configures Leaseweb storage connection</li>
-                        <li><strong>Directory Setup</strong>: Defines input/output directories</li>
-                        <li><strong>FFmpeg Settings</strong>: Configures video processing parameters</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div id="storage-config">
-            <h3>3.3 Storage Configuration</h3>
-            <div class="example-box">
-                <h4>Storage Handler Setup:</h4>
-                <pre>
-# storage_handler.py
-class LeasewebStorageHandler:
-    def __init__(self, config):
-        self.session = boto3.client(
-            's3',
-            endpoint_url=config['endpoint_url'],
-            aws_access_key_id=config['access_key'],
-            aws_secret_access_key=config['secret_key'],
-            region_name=config['region'],
-            config=Config(signature_version='s3v4')
-        )
-        self.bucket = config['bucket_name']</pre>
-                <div class="code-explanation">
-                    <p>The storage handler:</p>
-                    <ul>
-                        <li>Uses boto3 to connect to Leaseweb storage</li>
-                        <li>Configures S3-compatible storage access</li>
-                        <li>Sets up authentication and region</li>
-                        <li>Manages bucket access</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" id="components">
-        <h2>4. System Components</h2>
-        
-        <div id="storage">
-            <h3>4.1 Storage Handler (storage_handler.py)</h3>
-            <p>Manages interactions with Leaseweb Object Storage:</p>
-            <ul>
-                <li><code>LeasewebStorageHandler</code>: Main class for storage operations</li>
-                <li>Methods:
-                    <ul>
-                        <li><code>check_connection()</code>: Verifies storage connectivity</li>
-                        <li><code>upload_file()</code>: Uploads individual files</li>
-                        <li><code>upload_video_files()</code>: Uploads complete video packages</li>
-                        <li><code>generate_presigned_url()</code>: Creates temporary access URLs</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-
-        <div id="video-processor">
-            <h3>4.2 Video Processor (generate.py)</h3>
-            <p>Handles video processing and HLS conversion:</p>
-            <ul>
-                <li><code>VideoProcessor</code>: Main processing class</li>
-                <li>Features:
-                    <ul>
-                        <li>HLS format conversion</li>
-                        <li>Encryption key generation</li>
-                        <li>Segment generation</li>
-                        <li>Playlist creation</li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-
-        <div id="web-server">
-            <h3>4.3 Web Server (web_server.py)</h3>
-            <p>Flask-based web server providing:</p>
-            <ul>
-                <li>Video library interface</li>
-                <li>Video player serving</li>
-                <li>Proxy functionality for secure content delivery</li>
-                <li>CORS handling</li>
-            </ul>
-            <p>Key Routes:</p>
-            <table>
-                <tr>
-                    <th>Route</th>
-                    <th>Description</th>
-            </tr>
-            <tr>
-                    <td><code>/</code></td>
-                    <td>Video library homepage</td>
-            </tr>
-            <tr>
-                    <td><code>/player</code></td>
-                    <td>Video player page</td>
-            </tr>
-            <tr>
-                    <td><code>/proxy/&lt;path&gt;</code></td>
-                    <td>Content proxy endpoint</td>
-            </tr>
-            <tr>
-                    <td><code>/health</code></td>
-                    <td>Health check endpoint</td>
-            </tr>
-        </table>
-    </div>
-
-        <div id="player">
-            <h3>4.4 Video Player (test_player.py)</h3>
-            <p>HLS.js-based video player implementation:</p>
-            <ul>
-                <li>Adaptive bitrate streaming</li>
-                <li>Error recovery</li>
-                <li>Debugging capabilities</li>
-                <li>Buffer management</li>
+                <li><span class="term">HLS (HTTP Live Streaming)</span>: A way to send video over the internet in small chunks. It's like cutting a movie into many small pieces and sending them one by one.</li>
+                <li><span class="term">CDN (Content Delivery Network)</span>: A network of servers around the world that store copies of our videos. It's like having many local video stores instead of just one central store.</li>
+                <li><span class="term">Video.js</span>: Our video player software that runs in your web browser. Think of it as a DVD player that plays videos from the internet.</li>
             </ul>
         </div>
     </div>
 
-    <div class="section" id="storage">
-        <h2>4. Storage Management</h2>
-        
-        <div id="storage-setup">
-            <h3>4.1 Storage Configuration</h3>
-            <div class="example-box">
-                <h4>Setting Up Storage:</h4>
-            <pre>
-# 1. Configure environment variables
-LEASEWEB_ACCESS_KEY=your_access_key
-LEASEWEB_SECRET_KEY=your_secret_key
-LEASEWEB_BUCKET_NAME=your_bucket_name
+    <div class="section">
+        <h2>2. Why Can't I Just Use the CDN URL Directly?</h2>
+        <p>You might wonder: "Why can't I just use the video URL directly? For example: <code>https://di-yusrkfqf.leasewebultracdn.com/videos/sparkle/stream.m3u8</code>"</p>
 
-# 2. Initialize storage handler
-from storage_handler import LeasewebStorageHandler
-storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+        <p>When you try to access this URL directly, instead of playing the video, your browser will try to download the file. Here's why this happens:</p>
 
-# 3. Verify connection
-if storage.check_connection():
-    print("✓ Storage connected!")
-else:
-    print("❌ Connection failed!")</pre>
-            </div>
-        </div>
+        <div class="diagram">
+Direct CDN Access Problems:
+┌──────────┐    ╳    ┌──────────┐
+│ Browser  │─────────│   CDN    │
+└──────────┘         └──────────┘
+      │     Missing:    │
+      │  1. CORS Headers│
+      │  2. MIME Types  │
+      │  3. HLS Support │
+      └────────────────┘</div>
 
-        <div id="upload-process">
-            <h3>4.2 Upload Process</h3>
-            <div class="workflow-diagram">
-                <h4>File Organization in Storage:</h4>
-                    <pre>
-bucket_name/
-  └── videos/
-      └── video_name/
-          ├── key.key
-          ├── stream.m3u8
-          ├── iframes.m3u8
-          └── segments/
-              ├── segment_000.ts
-              ├── segment_001.ts
-              └── ...</pre>
-                </div>
-
-            <div class="process-steps">
-                <h4>Upload Sequence:</h4>
-                <ol>
-                    <li><strong>Preparation</strong>
-                        <ul>
-                            <li>Verify all local files exist</li>
-                            <li>Check storage connection</li>
-                            <li>Create remote directories if needed</li>
-                        </ul>
-            </li>
-                    <li><strong>Upload Order</strong>
-                        <ul>
-                            <li>First: Encryption key file</li>
-                            <li>Second: Video segments</li>
-                            <li>Last: Playlist files</li>
-                        </ul>
-            </li>
-                    <li><strong>Verification</strong>
-                        <ul>
-                            <li>Verify file checksums</li>
-                            <li>Confirm file accessibility</li>
-                            <li>Test presigned URLs</li>
-                        </ul>
-            </li>
-        </ol>
-            </div>
-        </div>
-
-        <div id="storage-security">
-            <h3>4.3 Security Measures</h3>
-            <div class="example-box">
-                <h4>Security Features:</h4>
-                <ul>
-                    <li><strong>Access Control</strong>
-                        <ul>
-                            <li>Presigned URLs with expiration</li>
-                            <li>Bucket policy restrictions</li>
-                            <li>IP-based access rules</li>
-                        </ul>
-                    </li>
-                    <li><strong>Content Protection</strong>
-                        <ul>
-                            <li>AES-128 encryption</li>
-                            <li>Secure key distribution</li>
-                            <li>HTTPS-only access</li>
-                        </ul>
-                    </li>
-            </ul>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" id="streaming">
-        <h2>5. Video Streaming</h2>
-        
-        <div id="streaming-setup">
-            <h3>5.1 Streaming Configuration</h3>
-            <div class="example-box">
-                <h4>HLS.js Player Setup:</h4>
-            <pre>
-const video = document.getElementById('videoElement');
-const hls = new Hls({
-    debug: true,
-    enableWorker: true,
-    maxBufferLength: 30,
-    maxBufferSize: 60 * 1000 * 1000
-});</pre>
-            </div>
-        </div>
-
-        <div id="error-handling">
-            <h3>5.2 Error Recovery</h3>
-            <div class="process-steps">
-                <h4>Error Handling Strategy:</h4>
-                <ol>
-                    <li><strong>Network Errors</strong>
-                        <ul>
-                            <li>Automatic retry with backoff</li>
-                            <li>Segment reload attempts</li>
-                            <li>Connection recovery</li>
-                </ul>
-            </li>
-                    <li><strong>Media Errors</strong>
-                        <ul>
-                            <li>Player recovery attempts</li>
-                            <li>Quality level switching</li>
-                            <li>Stream restart if needed</li>
-        </ul>
-                    </li>
-                </ol>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" id="usage">
-        <h2>5. Usage Guide</h2>
-        
-        <h3>5.1 Processing Videos</h3>
-        <pre>
-# Run the video processor
-python generate.py
-
-# Place MP4 files in the input/ directory
-# Processed files will be uploaded automatically
-        </pre>
-
-        <h3>5.2 Running the Web Server</h3>
-        <pre>
-# Development
-python web_server.py
-
-# Production (with gunicorn)
-gunicorn web_server:app
-        </pre>
-
-        <h3>5.3 Using the Video Library</h3>
+        <h3>2.1 Three Main Reasons:</h3>
         <ol>
-            <li>Access the web interface at <code>http://your-domain/</code></li>
-            <li>Browse available videos in the grid layout</li>
-            <li>Click on a video card to play</li>
-            <li>Use the search bar to filter videos</li>
+            <li>
+                <strong>CORS (Cross-Origin Resource Sharing)</strong>
+                <p>Think of CORS like a security guard at a building. When your browser tries to fetch the video directly from the CDN, it's like trying to enter a building without proper ID. The CDN's security settings don't allow direct access from web browsers.</p>
+            </li>
+            <li>
+                <strong>Content Type Headers</strong>
+                <p>The CDN sends the file with a basic content type (<code>binary/octet-stream</code>) instead of the correct video type (<code>application/vnd.apple.mpegurl</code>). It's like labeling a DVD as "random data" instead of "movie" - your browser doesn't know it's supposed to play it!</p>
+            </li>
+            <li>
+                <strong>HLS Playlist Processing</strong>
+                <p>An HLS video isn't just one file - it's a playlist (<code>.m3u8</code>) that points to many small video chunks (<code>.ts</code> files). Even if you could download the playlist, the paths inside it wouldn't work because they're relative to the CDN. It's like having a recipe that lists ingredients but doesn't tell you which store to buy them from!</p>
+            </li>
         </ol>
-        </div>
 
-    <div class="section" id="deployment">
-        <h2>6. Deployment</h2>
-        
-        <div id="railway-deploy">
-            <h3>6.1 Railway Deployment</h3>
-            <div class="example-box">
-                <h4>Step-by-Step Railway Deployment:</h4>
-                <ol class="step-by-step">
-                    <li>Create a GitHub Repository:
-                        <pre>
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/yourusername/video-player-hls.git
-git push -u origin main</pre>
-                    </li>
-                    <li>Set Up Railway:
-                        <ul>
-                            <li>Go to <a href="https://railway.app">railway.app</a></li>
-                            <li>Sign up/Login with GitHub</li>
-                            <li>Click "New Project"</li>
-                            <li>Choose "Deploy from GitHub repo"</li>
-                        </ul>
-                    </li>
-                    <li>Configure Environment Variables:
-                        <pre>
-# Railway Dashboard → Variables
-LEASEWEB_ACCESS_KEY=your_access_key
-LEASEWEB_SECRET_KEY=your_secret_key
-LEASEWEB_BUCKET_NAME=your_bucket_name
-LEASEWEB_ENDPOINT_URL=https://nl.object-storage.io
-LEASEWEB_REGION=nl</pre>
-                    </li>
-                    <li>Deploy:
-                        <ul>
-                            <li>Railway will automatically detect Python</li>
-                            <li>Uses Procfile for deployment</li>
-                            <li>Provides a deployment URL</li>
-                        </ul>
-                    </li>
-                </ol>
-    </div>
-
-            <div class="example-box">
-                <h4>Deployment Files:</h4>
-                <pre>
-# Procfile
-web: gunicorn web_server:app
-
-# requirements.txt
-boto3==1.26.137
-botocore==1.29.137
-pathlib==1.0.1
-python-dotenv==1.0.0
-flask==2.0.1
-gunicorn==20.1.0
-requests==2.31.0
-Werkzeug==2.0.3</pre>
-                <div class="code-explanation">
-                    <p>Key deployment files:</p>
-                    <ul>
-                        <li><code>Procfile</code>: Tells Railway how to run the application</li>
-                        <li><code>requirements.txt</code>: Lists all Python dependencies</li>
-                        <li><code>.gitignore</code>: Specifies which files to exclude from version control</li>
-        </ul>
-                </div>
-            </div>
-        </div>
-
-        <div id="monitoring">
-            <h3>6.3 Monitoring and Maintenance</h3>
-            <div class="example-box">
-                <h4>Health Check Endpoint:</h4>
+        <div class="note">
+            <h4>Technical Example:</h4>
+            <p>Here's what happens when you try to access the CDN directly:</p>
             <pre>
-@app.route('/health')
-def health_check():
-    """Health check endpoint"""
-    if storage and storage.check_connection():
-        return "Healthy", 200
-    return "Unhealthy - Storage connection failed", 500</pre>
-                <div class="code-explanation">
-                    <p>Monitoring features:</p>
-                    <ul>
-                        <li>Health check endpoint for uptime monitoring</li>
-                        <li>Storage connection verification</li>
-                        <li>Error logging for debugging</li>
-                        <li>Status codes for monitoring tools</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+GET https://di-yusrkfqf.leasewebultracdn.com/videos/sparkle/stream.m3u8
+Response Headers:
+Content-Type: binary/octet-stream  // Wrong content type!
+Content-Disposition: attachment     // Forces download
+Access-Control-Allow-Origin: ❌    // Missing CORS headers</pre>
         </div>
 
-    <div class="section" id="api">
-        <h2>7. API Reference</h2>
-        
-        <h3>7.1 Storage Handler API</h3>
-            <pre>
-storage = LeasewebStorageHandler(config)
-storage.check_connection()
-storage.upload_file(local_path, object_key)
-storage.generate_presigned_url(object_key, expiration=3600)
-        </pre>
-
-        <h3>7.2 Video Processor API</h3>
-        <pre>
-processor = VideoProcessor(input_dir, output_dir, storage_handler)
-processor.process_video(input_file)
-processor.process_all_videos()
-        </pre>
-
-        <h3>7.3 Web Server API</h3>
-        <table>
-            <tr>
-                <th>Endpoint</th>
-                <th>Method</th>
-                <th>Description</th>
-            </tr>
-            <tr>
-                <td><code>/health</code></td>
-                <td>GET</td>
-                <td>Health check endpoint</td>
-            </tr>
-            <tr>
-                <td><code>/player?video=name</code></td>
-                <td>GET</td>
-                <td>Video player page</td>
-            </tr>
-            <tr>
-                <td><code>/proxy/&lt;path&gt;</code></td>
-                <td>GET</td>
-                <td>Proxy endpoint for video content</td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="warning">
-        <strong>Security Notes:</strong>
+        <h3>2.2 How Our Server Fixes These Issues:</h3>
         <ul>
-            <li>Always use HTTPS in production</li>
-            <li>Keep your storage credentials secure</li>
-            <li>Implement proper access control</li>
-            <li>Monitor your application logs</li>
-            <li>Regularly update dependencies</li>
+            <li><strong>Proper Headers</strong>: We add the correct content type and CORS headers</li>
+            <li><strong>Path Translation</strong>: We fix the video chunk URLs in the playlist</li>
+            <li><strong>Streaming Support</strong>: We handle the HLS protocol properly</li>
         </ul>
+
+        <div class="tip">
+            <h4>Think of it Like This:</h4>
+            <p>Our server acts like a translator between your browser and the CDN. It takes the raw video data from the CDN and presents it in a way your browser can understand and play!</p>
+        </div>
     </div>
 
-    <div class="section" id="examples">
-        <h2>8. Code Examples</h2>
+    <div class="section">
+        <h2>3. Our Video Player: Video.js</h2>
+        <p>We use Video.js to play our videos because it's powerful, easy to use, and works on all devices. Here's what makes it special:</p>
+
+        <h3>3.1 Video.js Features</h3>
+        <ul>
+            <li><strong>Adaptive Quality</strong>: Automatically adjusts video quality based on your internet speed</li>
+            <li><strong>Built-in Controls</strong>: Play, pause, volume, and fullscreen buttons</li>
+            <li><strong>Mobile Support</strong>: Works on phones and tablets</li>
+            <li><strong>Custom Styling</strong>: Looks beautiful and matches our website design</li>
+        </ul>
+
+        <div class="tip">
+            <h4>Cool Feature!</h4>
+            <p>You can change playback speed! Try clicking the speed button to watch videos faster or slower.</p>
+        </div>
+
+        <h3>3.2 How to Use the Video Player</h3>
+        <pre>
+// Basic Video.js player setup
+const player = videojs('videoPlayer', {
+    fluid: true,              // Automatically fits the container
+    controls: true,           // Shows video controls
+    autoplay: false,         // Don't play automatically
+    preload: 'auto'          // Start loading video data early
+});</pre>
+    </div>
+
+    <div class="section">
+        <h2>4. How Our System Works</h2>
         
-        <div id="upload-example">
-            <h3>8.1 Storage Operations (storage_handler.py)</h3>
-            <div class="example-box">
-                <h4>Example: Upload and Manage Video Files</h4>
-                <div class="script-info">
-                    <p><strong>Script:</strong> storage_handler.py</p>
-                    <p><strong>Purpose:</strong> Handles all storage-related operations including file uploads, downloads, and URL generation.</p>
-                </div>
-                <pre>
-from config import LEASEWEB_CONFIG
-from storage_handler import LeasewebStorageHandler
+        <div class="diagram">
+Video Request Flow:
+┌──────────┐     1      ┌──────────┐     2      ┌──────────┐
+│ Browser  │────────────│  Our     │────────────│   CDN    │
+│          │  Request   │  Server  │   Fetch    │  Server  │
+└──────────┘            └──────────┘            └──────────┘
+      ▲                      │                       │
+      │         4            │          3            │
+      └──────────────────────┴───────────────────────┘
+         Watch Video      Process & Send Data</div>
 
-# Initialize storage handler
-storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+        <h3>4.1 Step-by-Step Explanation</h3>
+        <ol>
+            <li><strong>You Click Play</strong>: Your browser asks our server for the video</li>
+            <li><strong>Server Contacts CDN</strong>: Our server gets the video from the storage server</li>
+            <li><strong>Processing</strong>: We prepare the video for smooth playback</li>
+            <li><strong>Watching</strong>: Video.js plays the video in your browser</li>
+        </ol>
 
-# Example 1: Basic file upload
-success = storage.upload_file(
-    local_path="input/my_video.mp4",
-    object_key="videos/my_video/stream.m3u8"
-)
-
-# Example 2: Upload complete video package
-success = storage.upload_video_files(
-    video_name="my_video",
-    video_dir=Path("output/my_video")
-)
-
-# Example 3: Generate temporary access URL
-url = storage.generate_presigned_url(
-    object_key="videos/my_video/stream.m3u8",
-    expiration=3600  # 1 hour
-)</pre>
-                <div class="code-explanation">
-                    <p>Key Features:</p>
-                    <ul>
-                        <li>Secure file uploads with error handling</li>
-                        <li>Batch upload support for video packages</li>
-                        <li>Temporary URL generation for secure access</li>
-                        <li>Connection status verification</li>
-            </ul>
-                </div>
-        </div>
-    </div>
-
-        <div id="process-example">
-            <h3>8.2 Video Processing (generate.py)</h3>
-            <div class="example-box">
-                <h4>Example: Process and Convert Videos</h4>
-                <div class="script-info">
-                    <p><strong>Script:</strong> generate.py</p>
-                    <p><strong>Purpose:</strong> Handles video conversion to HLS format, including segmentation and encryption.</p>
-                </div>
-
-                <div class="workflow-diagram">
-                    <h4>Video Generation Workflow:</h4>
-                    <pre>
-[1. Input Phase]
-input/
-  ├── video1.mp4
-  └── video2.mp4
-        ↓
-[2. Processing Phase]
-VideoProcessor
-  ├── Generate encryption key
-  ├── Create HLS segments
-  └── Build playlists
-        ↓
-[3. Output Structure]
-output/video1/
-  ├── key.key           (Encryption key)
-  ├── stream.m3u8       (Master playlist)
-  ├── iframes.m3u8      (I-frames playlist)
-  └── segments/
-      ├── segment_000.ts
-      ├── segment_001.ts
-      └── ...
-        ↓
-[4. Storage Upload]
-Leaseweb Storage
-  └── videos/video1/
-      ├── key.key
-      ├── stream.m3u8
-      ├── iframes.m3u8
-      └── segments/
-          ├── segment_000.ts
-          └── ...
-        ↓
-[5. Cleanup]
-✓ Local files removed
-✓ Ready for streaming</pre>
-        </div>
-
-                <h4>Generation Process Example:</h4>
-                <pre>
-from generate import VideoProcessor
-from storage_handler import LeasewebStorageHandler
-from config import LEASEWEB_CONFIG, INPUT_DIR, OUTPUT_DIR
-
-# Initialize components
-storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
-processor = VideoProcessor(INPUT_DIR, OUTPUT_DIR, storage)
-
-# Example 1: Process a single video
-success = processor.process_video(Path("input/my_video.mp4"))
-
-# Example 2: Process all videos in input directory
-success = processor.process_all_videos()
-
-# Example 3: Custom processing with options
-processor.process_video(
-    input_file=Path("input/my_video.mp4"),
-    segment_duration=6,
-    encryption_enabled=True
-)</pre>
-
-                <div class="process-steps">
-                    <h4>Step-by-Step Generation Process:</h4>
-                    <ol>
-                        <li><strong>Input Preparation</strong>
-                            <ul>
-                                <li>Place MP4 files in the <code>input/</code> directory</li>
-                                <li>Files are automatically detected by the processor</li>
-                                <li>Supported formats: MP4 (H.264 video codec)</li>
-        </ul>
-                        </li>
-                        <li><strong>Video Processing</strong>
-                            <ul>
-                                <li>Generate random AES-128 encryption key</li>
-                                <li>Create key info file for FFmpeg</li>
-                                <li>Split video into 6-second segments</li>
-                                <li>Generate HLS playlists</li>
-        </ul>
-                        </li>
-                        <li><strong>Storage Upload</strong>
-                            <ul>
-                                <li>Upload encryption key</li>
-                                <li>Upload all video segments</li>
-                                <li>Upload playlist files</li>
-                                <li>Verify upload success</li>
-                            </ul>
-                        </li>
-                        <li><strong>Cleanup</strong>
-                            <ul>
-                                <li>Remove temporary files</li>
-                                <li>Clear output directory</li>
-                                <li>Log completion status</li>
-                            </ul>
-                        </li>
-                    </ol>
-                </div>
-
-                <div class="code-explanation">
-                    <h4>Key Components:</h4>
-                    <ul>
-                        <li><strong>FFmpeg Commands</strong>
-                            <pre>
-# Generate encrypted segments
-ffmpeg -i input.mp4 \
-    -hls_time 6 \
-    -hls_key_info_file key_info \
-    -hls_playlist_type vod \
-    -hls_segment_filename "segments/segment_%03d.ts" \
-    stream.m3u8
-
-# Generate iframe playlist
-ffmpeg -i input.mp4 \
-    -hls_flags iframes_only \
-    -hls_playlist_type vod \
-    iframes.m3u8</pre>
-                        </li>
-                        <li><strong>Output Files</strong>
-                            <ul>
-                                <li><code>key.key</code>: 16-byte AES-128 encryption key</li>
-                                <li><code>stream.m3u8</code>: Main HLS playlist</li>
-                                <li><code>iframes.m3u8</code>: Seeking optimization playlist</li>
-                                <li><code>segments/*.ts</code>: Encrypted video segments</li>
-                            </ul>
-                        </li>
-        </ul>
-    </div>
-
-                <div class="usage-example">
-                    <h4>Quick Start Usage:</h4>
-                    <pre>
-# 1. Place videos in input directory
-cp my_video.mp4 input/
-
-# 2. Run the processor
-python generate.py
-
-# 3. Check processing status
-Processing my_video.mp4...
-✓ Generated encryption key
-✓ Created HLS segments
-✓ Generated playlists
-✓ Uploaded to storage
-✓ Cleaned up local files
-
-# 4. Access via web player
-http://your-domain/player?video=my_video</pre>
-                </div>
-
-                <div class="code-explanation">
-                    <p>Processing Features:</p>
-                    <ul>
-                        <li>Automatic HLS conversion with encryption</li>
-                        <li>Batch processing support</li>
-                        <li>Progress tracking and error handling</li>
-                        <li>Automatic cleanup after successful upload</li>
-                        <li>Detailed logging for troubleshooting</li>
-        </ul>
-                </div>
-            </div>
-        </div>
-
-        <div id="stream-example">
-            <h3>8.3 Video Streaming (web_server.py)</h3>
-            <div class="example-box">
-                <h4>Example: Stream and Play Videos</h4>
-                <div class="script-info">
-                    <p><strong>Script:</strong> web_server.py</p>
-                    <p><strong>Purpose:</strong> Provides the web interface and streaming functionality for video playback.</p>
-                </div>
-                <pre>
-# Example 1: Access video player
-http://your-domain/player?video=my_video
-
-# Example 2: Direct segment access
-http://your-domain/proxy/videos/my_video/segments/segment_000.ts
-
-# Example 3: Playlist access
-http://your-domain/proxy/videos/my_video/stream.m3u8
-
-# The streaming process:
-1. Client requests video player page
-2. HLS.js initializes and loads playlist
-3. Player requests segments through proxy
-4. Server validates and serves content
-5. Player handles adaptive playback</pre>
-                <div class="code-explanation">
-                    <p>Streaming Features:</p>
-                    <ul>
-                        <li>Secure content delivery</li>
-                        <li>Adaptive bitrate streaming</li>
-                        <li>Proxy-based access control</li>
-                        <li>Error recovery and monitoring</li>
-        </ul>
-                </div>
-            </div>
-    </div>
-
-        <div class="best-practices-box">
-            <h4>Documentation Best Practices</h4>
+        <div class="warning">
+            <h4>Common Issues:</h4>
+            <p>If the video doesn't play:</p>
             <ul>
-                <li><strong>Script Organization:</strong> Each example clearly identifies its source file and purpose</li>
-                <li><strong>Code Structure:</strong> Examples progress from basic to advanced usage</li>
-                <li><strong>Clarity:</strong> Each section includes context, purpose, and key features</li>
-                <li><strong>Completeness:</strong> Coverage of all major functionality with practical examples</li>
+                <li>Check your internet connection</li>
+                <li>Try refreshing the page</li>
+                <li>Make sure you're using a modern browser</li>
             </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>5. Technical Details</h2>
+
+        <h3>5.1 Video Player Code</h3>
+        <pre>
+&lt;video id="videoPlayer" 
+       class="video-js vjs-default-skin"
+       controls
+       preload="auto"&gt;
+    &lt;source src="/proxy/videos/example/stream.m3u8" 
+            type="application/x-mpegURL"&gt;
+&lt;/video&gt;</pre>
+
+        <h3>5.2 Important Settings</h3>
+        <ul>
+            <li><strong>Adaptive Streaming</strong>: Videos automatically adjust quality based on internet speed</li>
+            <li><strong>Error Recovery</strong>: Player automatically tries to recover from network issues</li>
+            <li><strong>Cross-Browser Support</strong>: Works in Chrome, Firefox, Safari, and Edge</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>6. Testing and Troubleshooting</h2>
+        
+        <h3>6.1 How to Test</h3>
+        <pre>
+1. Open the video library page
+2. Select any video
+3. Check if the player loads
+4. Try playing the video
+5. Test different playback speeds
+6. Try fullscreen mode</pre>
+
+        <h3>6.2 Common Error Messages</h3>
+        <ul>
+            <li><strong>"Error loading media"</strong>: Usually means internet connection issues</li>
+            <li><strong>"Format not supported"</strong>: Try using a different browser</li>
+            <li><strong>"Playback error"</strong>: Refresh the page and try again</li>
+        </ul>
+
+        <div class="note">
+            <h4>Need Help?</h4>
+            <p>If you're having problems, check the browser's console (Press F12) for error messages. These help us understand what's wrong!</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>7. Best Practices</h2>
+        <ul>
+            <li>Always include proper error handling in your code</li>
+            <li>Test videos on different devices and browsers</li>
+            <li>Monitor server logs for potential issues</li>
+            <li>Keep Video.js and other libraries updated</li>
+        </ul>
+
+        <div class="tip">
+            <h4>Pro Tip!</h4>
+            <p>Use the browser's developer tools (F12) to monitor network activity and see how the video chunks are loaded!</p>
         </div>
     </div>
 </body>
