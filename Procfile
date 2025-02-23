@@ -1,1 +1,1 @@
-web: cd CDN-Video-Testing && gunicorn serve:app 
+web: gunicorn app:app 
