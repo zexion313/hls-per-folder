@@ -458,56 +458,74 @@ def create_app():
             path_parts = target_path.split('/')
             if len(path_parts) >= 2 and path_parts[0] == 'videos':
                 video_name = path_parts[1]
+                logger.info(f"Extracted video name: {video_name}")
             else:
                 video_name = None
+                logger.warning(f"Could not extract video name from path: {target_path}")
 
             # Construct the CDN URL
             cdn_url = f"https://di-yusrkfqf.leasewebultracdn.com/{target_path}"
             logger.info(f"Requesting from CDN: {cdn_url}")
 
-            # Set up headers for the CDN request
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': '*/*',
-                'Accept-Encoding': 'identity',  # Prevent gzip encoding
-                'Connection': 'keep-alive'
-            }
+            try:
+                # Set up headers for the CDN request
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Encoding': 'identity',  # Prevent gzip encoding
+                    'Connection': 'keep-alive'
+                }
 
-            # Make the request to the CDN
-            response = requests.get(cdn_url, headers=headers, timeout=30)
-            logger.info(f"CDN response status: {response.status_code}")
-            logger.info(f"CDN response headers: {response.headers}")
+                # Make the request to the CDN
+                response = requests.get(cdn_url, headers=headers, timeout=30)
+                logger.info(f"CDN response status: {response.status_code}")
+                logger.info(f"CDN response headers: {dict(response.headers)}")
 
-            if response.status_code == 200:
-                content = response.content
+                if response.status_code == 200:
+                    content = response.content
+                    logger.info(f"Received content length: {len(content)} bytes")
 
-                # If this is an m3u8 file, modify the URLs
-                if target_path.endswith('.m3u8'):
-                    content = modify_m3u8_urls(content.decode('utf-8'), video_name)
-                    content = content.encode('utf-8')
-                    logger.info(f"Modified m3u8 content: {content.decode('utf-8')}")
+                    # If this is an m3u8 file, modify the URLs
+                    if target_path.endswith('.m3u8'):
+                        try:
+                            decoded_content = content.decode('utf-8')
+                            logger.info(f"Original m3u8 content:\n{decoded_content}")
+                            content = modify_m3u8_urls(decoded_content, video_name)
+                            content = content.encode('utf-8')
+                            logger.info(f"Modified m3u8 content:\n{content.decode('utf-8')}")
+                        except Exception as e:
+                            logger.error(f"Error modifying m3u8 content: {str(e)}")
+                            raise
 
-                # Determine content type
-                content_type = get_content_type(target_path)
+                    # Determine content type
+                    content_type = get_content_type(target_path)
+                    logger.info(f"Content-Type determined: {content_type}")
 
-                # Create response
-                response = Response(content)
-                response.headers['Content-Type'] = content_type
-                response.headers['Access-Control-Allow-Origin'] = '*'
-                response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-                response.headers['Access-Control-Allow-Headers'] = '*'
-                
-                return response
-            else:
-                logger.error(f"CDN returned status {response.status_code}")
-                return f"CDN Error: {response.status_code}", response.status_code
+                    # Create response
+                    response = Response(content)
+                    response.headers['Content-Type'] = content_type
+                    response.headers['Access-Control-Allow-Origin'] = '*'
+                    response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+                    response.headers['Access-Control-Allow-Headers'] = '*'
+                    
+                    return response
+                else:
+                    error_msg = f"CDN returned status {response.status_code}"
+                    if response.content:
+                        error_msg += f": {response.content.decode('utf-8', errors='ignore')}"
+                    logger.error(error_msg)
+                    return {"error": "CDN Error", "message": error_msg}, response.status_code
 
-        except requests.Timeout:
-            logger.error(f"Timeout while fetching: {target_path}")
-            return "Gateway Timeout", 504
+            except requests.Timeout:
+                logger.error(f"Timeout while fetching: {cdn_url}")
+                return {"error": "Gateway Timeout", "message": "Request to CDN timed out"}, 504
+            except requests.RequestException as e:
+                logger.error(f"Request error: {str(e)}")
+                return {"error": "CDN Request Failed", "message": str(e)}, 502
+
         except Exception as e:
-            logger.error(f"Proxy error: {str(e)}")
-            return f"Server Error: {str(e)}", 500
+            logger.error(f"Proxy error: {str(e)}", exc_info=True)  # Include full traceback
+            return {"error": "Internal Server Error", "message": str(e)}, 500
 
     def get_content_type(path):
         """Determine content type based on file extension"""
