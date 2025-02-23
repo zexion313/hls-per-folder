@@ -197,7 +197,7 @@ def create_app():
     @app.route('/videos')
     def get_videos():
         """Get list of available videos"""
-        videos = ['fly', 'song', 'sparkle', 'maverick']
+        videos = ['fly', 'song', 'sparkle', 'maverick', 'transformers', 'whiplash']
         return json.dumps(videos)
 
     @app.route('/player')
