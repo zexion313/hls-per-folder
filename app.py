@@ -23,46 +23,14 @@ def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    # Startup check
-    @app.before_first_request
-    def startup_check():
-        logger.info("Performing startup checks...")
-        try:
-            # Log environment information
-            logger.info(f"Python version: {sys.version}")
-            logger.info(f"Flask version: {flask_version}")
-            logger.info(f"Running on port: {os.environ.get('PORT', '8000')}")
-            
-            # Check if we can make external requests
-            test_url = "https://www.google.com"
-            requests.get(test_url, timeout=5)
-            logger.info("External connectivity check passed")
-            
-        except Exception as e:
-            logger.error(f"Startup check failed: {str(e)}")
-            # Don't fail startup, just log the error
-    
     @app.route('/health')
     def health_check():
-        """Enhanced health check endpoint"""
+        """Lightweight health check endpoint"""
         try:
-            health_data = {
-                "status": "healthy",
-                "timestamp": str(datetime.now()),
-                "python_version": sys.version,
-                "flask_version": flask_version,
-                "environment": os.environ.get('FLASK_ENV', 'production')
-            }
-            logger.info(f"Health check passed: {json.dumps(health_data)}")
-            return health_data, 200
+            return {"status": "healthy"}, 200
         except Exception as e:
-            error_data = {
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": str(datetime.now())
-            }
-            logger.error(f"Health check failed: {json.dumps(error_data)}")
-            return error_data, 500
+            logger.error(f"Health check failed: {str(e)}")
+            return {"status": "unhealthy", "error": str(e)}, 500
 
     # Add error handlers
     @app.errorhandler(500)
