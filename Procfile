@@ -1,1 +1,1 @@
-web: python CDN-Video-Testing/serve.py 
+web: gunicorn "CDN-Video-Testing.serve:app" 
