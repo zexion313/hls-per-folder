@@ -496,17 +496,11 @@ def create_app():
             logger.info(f"Requesting from CDN: {cdn_url}")
 
             try:
-                # First, test if the resource exists
-                head_response = requests.head(cdn_url, timeout=5)
-                if head_response.status_code == 404:
-                    logger.error(f"Resource not found: {cdn_url}")
-                    return {"error": "Not Found", "message": f"Resource not found: {target_path}"}, 404
-
                 # Set up headers for the CDN request
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                     'Accept': '*/*',
-                    'Accept-Encoding': 'identity',  # Prevent gzip encoding
+                    'Accept-Encoding': 'gzip',  # Accept gzip encoding
                     'Connection': 'keep-alive'
                 }
 
@@ -516,6 +510,7 @@ def create_app():
                 logger.info(f"CDN response headers: {dict(response.headers)}")
 
                 if response.status_code == 200:
+                    # Get the content - requests automatically handles gzip decompression
                     content = response.content
                     logger.info(f"Received content length: {len(content)} bytes")
 
@@ -545,15 +540,20 @@ def create_app():
                     content_type = get_content_type(target_path)
                     logger.info(f"Content-Type determined: {content_type}")
 
-                    # Create response
+                    # Create response with proper headers
                     response = Response(content)
-                    response.headers['Content-Type'] = content_type
+                    response.headers['Content-Type'] = content_type  # Force correct content type
+                    response.headers['Content-Length'] = len(content)
                     response.headers['Access-Control-Allow-Origin'] = '*'
                     response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
                     response.headers['Access-Control-Allow-Headers'] = '*'
                     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                     response.headers['Pragma'] = 'no-cache'
                     response.headers['Expires'] = '0'
+                    
+                    # Remove any content encoding header since we're sending uncompressed content
+                    if 'Content-Encoding' in response.headers:
+                        del response.headers['Content-Encoding']
                     
                     return response
                 else:
