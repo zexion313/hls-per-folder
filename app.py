@@ -8,7 +8,7 @@ from flask_cors import CORS
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,  # Changed to INFO for production
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -20,16 +20,16 @@ CORS(app)  # Enable CORS for all routes
 @app.errorhandler(500)
 def handle_500(e):
     logger.error(f"Internal server error: {str(e)}")
-    return "Internal Server Error", 500
+    return {"error": "Internal Server Error", "message": str(e)}, 500
 
 @app.errorhandler(404)
 def handle_404(e):
-    return "Not Found", 404
+    return {"error": "Not Found", "message": str(e)}, 404
 
 # Add health check endpoint
 @app.route('/health')
 def health_check():
-    return "OK", 200
+    return {"status": "healthy"}, 200
 
 @app.route('/')
 def serve_video_library():
@@ -491,5 +491,10 @@ def modify_m3u8_urls(content, video_name=None):
     return '\n'.join(modified_lines)
 
 if __name__ == "__main__":
+    # Get port from environment variable or default to 8000
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # In production, ensure debug is False
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    
+    logger.info(f"Starting server on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=debug)
