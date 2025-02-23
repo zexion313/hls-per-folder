@@ -5,6 +5,7 @@ import logging
 import json
 import os
 from flask_cors import CORS
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
@@ -13,6 +14,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Create Flask app at module level for gunicorn
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -29,7 +31,11 @@ def handle_404(e):
 # Add health check endpoint
 @app.route('/health')
 def health_check():
-    return {"status": "healthy"}, 200
+    try:
+        return {"status": "healthy", "timestamp": str(datetime.now())}, 200
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return {"status": "unhealthy", "error": str(e)}, 500
 
 @app.route('/')
 def serve_video_library():
@@ -490,6 +496,7 @@ def modify_m3u8_urls(content, video_name=None):
     logger.info(f"Modified m3u8 content:\n{'\n'.join(modified_lines)}")
     return '\n'.join(modified_lines)
 
+# Only run the app directly if this file is being run directly
 if __name__ == "__main__":
     # Get port from environment variable or default to 8000
     port = int(os.environ.get('PORT', 8000))
