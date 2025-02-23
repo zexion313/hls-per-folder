@@ -446,7 +446,7 @@ def create_app():
 </body>
 </html>
     """
-    return html
+  
 
     @app.route('/proxy/<path:target_path>')
     def proxy_request(target_path):
