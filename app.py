@@ -214,8 +214,6 @@ def create_app():
     <title>Playing {video_name}</title>
     <!-- Video.js CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.3/video-js.min.css" rel="stylesheet">
-    <!-- Video.js quality selector CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/4.0.0/videojs-contrib-quality-levels.css" rel="stylesheet">
     <style>
         body {{
             margin: 0;
@@ -323,8 +321,7 @@ def create_app():
             <video id="videoPlayer" 
                    class="video-js vjs-default-skin vjs-big-play-centered"
                    controls
-                   preload="auto"
-                   data-setup='{{"fluid": true}}'>
+                   preload="auto">
                 <source src="/proxy/videos/{video_name}/stream.m3u8" type="application/x-mpegURL">
                 <p class="vjs-no-js">
                     To view this video please enable JavaScript, and consider upgrading to a
@@ -357,11 +354,6 @@ def create_app():
 
     <!-- Video.js JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/video.js/8.5.3/video.min.js"></script>
-    <!-- Video.js HLS tech -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.15.0/videojs-contrib-hls.min.js"></script>
-    <!-- Video.js quality selector -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/4.0.0/videojs-contrib-quality-levels.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-http-source-selector/1.1.6/videojs-http-source-selector.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {{
@@ -382,34 +374,27 @@ def create_app():
 
             // Initialize Video.js player
             const player = videojs('videoPlayer', {{
-                html5: {{
-                    hls: {{
-                        overrideNative: true,
-                        enableLowInitialPlaylist: true,
-                        smoothQualityChange: true,
-                        handleManifestRedirects: true,
-                        allowSeeksWithinUnsafeLiveWindow: true
-                    }}
-                }},
+                fluid: true,
                 controls: true,
                 autoplay: false,
                 preload: 'auto',
-                responsive: true,
-                fluid: true,
                 playbackRates: [0.5, 1, 1.5, 2],
-                plugins: {{
-                    httpSourceSelector: {{
-                        default: 'auto'
-                    }}
+                html5: {{
+                    vhs: {{
+                        overrideNative: true,
+                        fastQualityChange: true,
+                        useBandwidthFromLocalStorage: true
+                    }},
+                    nativeAudioTracks: false,
+                    nativeVideoTracks: false
                 }}
             }});
-
-            // Add quality selector plugin
-            player.httpSourceSelector();
 
             // Event handlers
             player.on('ready', function() {{
                 updateStatus('Player ready');
+                // Force player dimensions after ready
+                player.dimensions(player.width(), player.width() * 9/16);
             }});
 
             player.on('play', function() {{
@@ -427,14 +412,6 @@ def create_app():
             player.on('error', function(error) {{
                 updateStatus('Error occurred');
                 showError('Player Error: ' + player.error().message);
-            }});
-
-            // Quality level tracking
-            player.on('qualityLevel', function() {{
-                const level = player.qualityLevels()[player.qualityLevels().selectedIndex];
-                if (level) {{
-                    updateStatus('Playing at ' + Math.round(level.bitrate / 1000) + 'kbps');
-                }}
             }});
 
             // Cleanup on page unload
