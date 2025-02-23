@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaseweb CDN Stream Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { margin: 20px; background: #f0f0f0; font-family: Arial, sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; }
+        video { width: 100%; background: #000; }
+        .stats { 
+            margin-top: 10px; 
+            padding: 10px; 
+            background: white; 
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Leaseweb CDN Stream Test</h2>
+        <video id="video" controls></video>
+        <div id="stats" class="stats">Status: Initializing...</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const stats = document.getElementById('stats');
+        
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                debug: true,
+                enableWorker: true,
+                maxBufferLength: 30,
+                maxBufferSize: 60 * 1000 * 1000,
+                // Add performance monitoring
+                xhrSetup: function(xhr, url) {
+                    const start = performance.now();
+                    xhr.addEventListener('loadend', () => {
+                        const duration = performance.now() - start;
+                        if (url.endsWith('.ts')) {
+                            stats.textContent = `Last segment load time: ${duration.toFixed(2)}ms`;
+                        }
+                    });
+                }
+            });
+
+            hls.loadSource('https://di-yusrkfqf.leasewebultracdn.com/videos/fly/stream.m3u8');
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                stats.textContent = 'Manifest loaded, starting playback...';
+                video.play();
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    stats.textContent = `Error: ${data.type} - ${data.details}`;
+                }
+            });
+        } else {
+            stats.textContent = 'HLS.js is not supported in this browser';
+        }
+    </script>
+</body>
+</html>
