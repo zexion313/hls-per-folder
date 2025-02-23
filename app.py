@@ -433,7 +433,7 @@ def create_app():
             player.on('qualityLevel', function() {{
                 const level = player.qualityLevels()[player.qualityLevels().selectedIndex];
                 if (level) {{
-                    updateStatus(`Playing at ${Math.round(level.bitrate / 1000)}kbps`);
+                    updateStatus('Playing at ' + Math.round(level.bitrate / 1000) + 'kbps');
                 }}
             }});
 
@@ -445,8 +445,8 @@ def create_app():
     </script>
 </body>
 </html>
-    """
-  
+"""
+        return html
 
     @app.route('/test-cdn/<video_name>')
     def test_cdn(video_name):
