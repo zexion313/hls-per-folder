@@ -448,6 +448,33 @@ def create_app():
     """
   
 
+    @app.route('/test-cdn/<video_name>')
+    def test_cdn(video_name):
+        """Test CDN connectivity for a specific video"""
+        try:
+            # Test m3u8 playlist
+            playlist_url = f"https://di-yusrkfqf.leasewebultracdn.com/videos/{video_name}/stream.m3u8"
+            logger.info(f"Testing CDN connection to: {playlist_url}")
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Encoding': 'identity'
+            }
+            
+            response = requests.head(playlist_url, headers=headers, timeout=10)
+            
+            return {
+                "status": "success" if response.status_code == 200 else "error",
+                "url_tested": playlist_url,
+                "status_code": response.status_code,
+                "headers": dict(response.headers)
+            }
+            
+        except Exception as e:
+            logger.error(f"CDN test failed: {str(e)}", exc_info=True)
+            return {"status": "error", "message": str(e)}, 500
+
     @app.route('/proxy/<path:target_path>')
     def proxy_request(target_path):
         """Handle proxy requests to CDN"""
@@ -462,12 +489,19 @@ def create_app():
             else:
                 video_name = None
                 logger.warning(f"Could not extract video name from path: {target_path}")
+                return {"error": "Invalid path", "message": "Could not extract video name"}, 400
 
             # Construct the CDN URL
             cdn_url = f"https://di-yusrkfqf.leasewebultracdn.com/{target_path}"
             logger.info(f"Requesting from CDN: {cdn_url}")
 
             try:
+                # First, test if the resource exists
+                head_response = requests.head(cdn_url, timeout=5)
+                if head_response.status_code == 404:
+                    logger.error(f"Resource not found: {cdn_url}")
+                    return {"error": "Not Found", "message": f"Resource not found: {target_path}"}, 404
+
                 # Set up headers for the CDN request
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -490,12 +524,22 @@ def create_app():
                         try:
                             decoded_content = content.decode('utf-8')
                             logger.info(f"Original m3u8 content:\n{decoded_content}")
+                            
+                            # Verify m3u8 content is valid
+                            if not decoded_content.strip():
+                                logger.error("Empty m3u8 content received")
+                                return {"error": "Invalid Content", "message": "Empty m3u8 file received"}, 500
+                            
+                            if not any(line.strip().startswith('#EXTM3U') for line in decoded_content.splitlines()):
+                                logger.error("Invalid m3u8 content - missing #EXTM3U header")
+                                return {"error": "Invalid Content", "message": "Invalid m3u8 file format"}, 500
+                            
                             content = modify_m3u8_urls(decoded_content, video_name)
                             content = content.encode('utf-8')
                             logger.info(f"Modified m3u8 content:\n{content.decode('utf-8')}")
                         except Exception as e:
                             logger.error(f"Error modifying m3u8 content: {str(e)}")
-                            raise
+                            return {"error": "Processing Error", "message": f"Failed to process m3u8: {str(e)}"}, 500
 
                     # Determine content type
                     content_type = get_content_type(target_path)
@@ -507,6 +551,9 @@ def create_app():
                     response.headers['Access-Control-Allow-Origin'] = '*'
                     response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
                     response.headers['Access-Control-Allow-Headers'] = '*'
+                    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                    response.headers['Pragma'] = 'no-cache'
+                    response.headers['Expires'] = '0'
                     
                     return response
                 else:
