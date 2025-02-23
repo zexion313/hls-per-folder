@@ -1,4 +1,4 @@
-from flask import Flask, Response, request, send_from_directory
+from flask import Flask, Response, request, send_from_directory, __version__ as flask_version
 import requests
 import urllib.parse
 import logging
@@ -30,7 +30,7 @@ def create_app():
         try:
             # Log environment information
             logger.info(f"Python version: {sys.version}")
-            logger.info(f"Flask version: {Flask.__version__}")
+            logger.info(f"Flask version: {flask_version}")
             logger.info(f"Running on port: {os.environ.get('PORT', '8000')}")
             
             # Check if we can make external requests
@@ -46,20 +46,23 @@ def create_app():
     def health_check():
         """Enhanced health check endpoint"""
         try:
-            return {
+            health_data = {
                 "status": "healthy",
                 "timestamp": str(datetime.now()),
                 "python_version": sys.version,
-                "flask_version": Flask.__version__,
+                "flask_version": flask_version,
                 "environment": os.environ.get('FLASK_ENV', 'production')
-            }, 200
+            }
+            logger.info(f"Health check passed: {json.dumps(health_data)}")
+            return health_data, 200
         except Exception as e:
-            logger.error(f"Health check failed: {str(e)}")
-            return {
+            error_data = {
                 "status": "unhealthy",
                 "error": str(e),
                 "timestamp": str(datetime.now())
-            }, 500
+            }
+            logger.error(f"Health check failed: {json.dumps(error_data)}")
+            return error_data, 500
 
     # Add error handlers
     @app.errorhandler(500)
