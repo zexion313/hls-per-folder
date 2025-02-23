@@ -1,1 +1,1 @@
-web: gunicorn "CDN-Video-Testing.serve:app" 
+web: cd CDN-Video-Testing && gunicorn serve:app 
