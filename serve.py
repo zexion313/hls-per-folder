@@ -4,7 +4,6 @@ import urllib.parse
 import logging
 import json
 import os
-from flask_cors import CORS
 
 # Configure logging
 logging.basicConfig(
@@ -14,22 +13,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-
-# Add error handlers
-@app.errorhandler(500)
-def handle_500(e):
-    logger.error(f"Internal server error: {str(e)}")
-    return "Internal Server Error", 500
-
-@app.errorhandler(404)
-def handle_404(e):
-    return "Not Found", 404
-
-# Add health check endpoint
-@app.route('/health')
-def health_check():
-    return "OK", 200
 
 @app.route('/')
 def serve_video_library():
@@ -492,4 +475,4 @@ def modify_m3u8_urls(content, video_name=None):
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port)
