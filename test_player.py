@@ -6,7 +6,7 @@ import webbrowser
 import urllib.parse
 from threading import Thread
 import requests
-from config import LEASEWEB_CONFIG
+from config import LEASEWEB_CONTROL_CONFIG, LEASEWEB_CDN_CONFIG
 from storage_handler import LeasewebStorageHandler
 
 class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
@@ -31,8 +31,35 @@ class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
             video_path = urllib.parse.unquote(original_path)
             
             try:
-                # Generate presigned URL
-                presigned_url = self.storage_handler.generate_presigned_url(video_path)
+                # Extract video name from path (e.g., "videos/sparkle/stream.m3u8" -> "sparkle")
+                path_parts = video_path.split('/')
+                if len(path_parts) >= 2 and path_parts[0] == 'videos':
+                    self.video_name = path_parts[1]
+                else:
+                    self.video_name = None
+                
+                # Determine which bucket to use based on file type
+                is_segment = video_path.endswith('.ts')
+                
+                # Generate presigned URL from appropriate bucket
+                if is_segment:
+                    presigned_url = self.storage_handler.cdn_session.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': self.storage_handler.cdn_bucket,
+                            'Key': video_path
+                        },
+                        ExpiresIn=3600
+                    )
+                else:
+                    presigned_url = self.storage_handler.control_session.generate_presigned_url(
+                        'get_object',
+                        Params={
+                            'Bucket': self.storage_handler.control_bucket,
+                            'Key': video_path
+                        },
+                        ExpiresIn=3600
+                    )
                 
                 if not presigned_url:
                     self.send_error(404, "File not found")
@@ -46,8 +73,13 @@ class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
                     
                     # If this is an m3u8 file, modify the URLs
                     if video_path.endswith('.m3u8'):
-                        content = self.modify_m3u8_urls(content.decode('utf-8'))
-                        content = content.encode('utf-8')
+                        try:
+                            content = self.modify_m3u8_urls(content.decode('utf-8'))
+                            content = content.encode('utf-8')
+                        except Exception as e:
+                            print(f"Error modifying m3u8 content: {str(e)}")
+                            self.send_error(500, f"Error modifying m3u8: {str(e)}")
+                            return
                     
                     # Send response
                     self.send_response(200)
@@ -80,19 +112,26 @@ class VideoProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     def modify_m3u8_urls(self, content):
         """Modify URLs in m3u8 file to use our proxy"""
+        if not hasattr(self, 'video_name') or not self.video_name:
+            raise ValueError("Video name not set")
+
         lines = content.split('\n')
         modified_lines = []
         
         for line in lines:
             line = line.strip()
+            if not line:  # Skip empty lines
+                modified_lines.append(line)
+                continue
+                
             if line.endswith('.ts') or line.endswith('.m3u8') or line.endswith('.key'):
                 # Convert the segment path to our proxy URL
                 if not line.startswith('http'):
+                    # Handle different path formats
                     if line.startswith('segments/'):
-                        # For segment files, add video parameter
-                        modified_lines.append(f'/proxy/{line}?video={self.video_name}')
+                        modified_lines.append(f'/proxy/videos/{self.video_name}/{line}')
                     else:
-                        modified_lines.append(f'/proxy/{line}')
+                        modified_lines.append(f'/proxy/videos/{self.video_name}/{line}')
                 else:
                     modified_lines.append(line)
             else:
@@ -108,7 +147,8 @@ class VideoPlayerTester:
 
     def generate_test_player(self, video_name: str) -> str:
         """Generate a test player HTML file for a specific video"""
-        base_path = f"videos/{video_name}"
+        output_dir = Path("test_players")
+        output_dir.mkdir(exist_ok=True)
         
         html_content = f"""
 <!DOCTYPE html>
@@ -148,16 +188,16 @@ class VideoPlayerTester:
             border-radius: 4px;
             display: none;
         }}
-        #videoElement {{
-            width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
-        }}
         .status {{
             margin-top: 10px;
             padding: 10px;
             background: #e8f5e9;
             border-radius: 4px;
+        }}
+        #videoElement {{
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
         }}
     </style>
 </head>
@@ -226,28 +266,86 @@ class VideoPlayerTester:
                 
                 try {{
                     hls = new Hls({{
-                        debug: true,
+                        debug: false,
                         enableWorker: true,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 600,
-                        maxBufferSize: 60 * 1000 * 1000,
-                        maxBufferHole: 0.5,
                         lowLatencyMode: false,
-                        manifestLoadingTimeOut: 20000,
-                        manifestLoadingMaxRetry: 4,
-                        levelLoadingTimeOut: 20000,
-                        levelLoadingMaxRetry: 4,
-                        fragLoadingTimeOut: 20000,
-                        fragLoadingMaxRetry: 6,
-                        startFragPrefetch: true,
-                        testBandwidth: true
+                        backBufferLength: 90,
+                        minBufferLength: 10,
+                        maxBufferLength: 60,
+                        maxMaxBufferLength: 600,
+                        maxBufferSize: 600 * 1000 * 1000,
+                        maxBufferHole: 1,
+                        highBufferWatchdogPeriod: 5,
+                        abrEwmaDefaultEstimate: 500000,
+                        abrBandWidthFactor: 0.95,
+                        abrBandWidthUpFactor: 0.7,
+                        abrMaxWithRealBitrate: true,
+                        manifestLoadPolicy: {{
+                            default: {{
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {{
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }},
+                                errorRetry: {{
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }}
+                            }}
+                        }},
+                        playlistLoadPolicy: {{
+                            default: {{
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {{
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }},
+                                errorRetry: {{
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }}
+                            }}
+                        }},
+                        fragLoadPolicy: {{
+                            default: {{
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {{
+                                    maxNumRetry: 8,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }},
+                                errorRetry: {{
+                                    maxNumRetry: 8,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }}
+                            }}
+                        }},
+                        nudgeOffset: 0.3,
+                        nudgeMaxRetry: 10,
+                        startLevel: 0,
+                        abrEwmaFastLive: 2,
+                        abrEwmaSlowLive: 5,
+                        abrEwmaFastVoD: 2,
+                        abrEwmaSlowVoD: 5,
+                        testBandwidth: true,
+                        progressive: true,
+                        autoStartLoad: true,
+                        startFragPrefetch: true
                     }});
 
                     hls.on(Hls.Events.MEDIA_ATTACHED, function() {{
                         updateStatus('Media attached, loading manifest...');
                     }});
 
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {{
+                    hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {{
                         updateStatus('Manifest loaded, starting playback...');
                         video.play().catch(function(error) {{
                             console.warn('Autoplay prevented:', error);
@@ -270,12 +368,9 @@ class VideoPlayerTester:
                                 default:
                                     updateStatus('Fatal error: ' + data.type);
                                     showError('Fatal HLS Error:\\n' + JSON.stringify(data, null, 2));
-                                    // Try to reinitialize player
                                     setTimeout(initPlayer, 2000);
                                     break;
                             }}
-                        }} else {{
-                            updateStatus('Recovered from error: ' + data.type);
                         }}
                     }});
 
@@ -289,20 +384,13 @@ class VideoPlayerTester:
                         hls.loadSource('/proxy/videos/{video_name}/stream.m3u8');
                     }}, 100);
 
-                    // Add quality level selection
-                    hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {{
-                        if (data.details) {{
-                            updateStatus('Playing - ' + data.details.totalduration.toFixed(1) + 's total duration');
-                        }}
-                    }});
-
                     // Monitor buffer state
                     setInterval(function() {{
                         if (video.buffered.length > 0) {{
                             const bufferedEnd = video.buffered.end(video.buffered.length - 1);
                             const duration = video.duration;
                             const bufferedPercent = (bufferedEnd / duration * 100).toFixed(1);
-                            console.log('Buffer: ' + bufferedPercent + '%');
+                            updateStatus('Buffer: ' + bufferedPercent + '%');
                         }}
                     }}, 3000);
 
@@ -332,10 +420,6 @@ class VideoPlayerTester:
 </body>
 </html>
         """
-        
-        # Create test_players directory if it doesn't exist
-        output_dir = Path("test_players")
-        output_dir.mkdir(exist_ok=True)
         
         # Save the HTML file
         output_file = output_dir / f"{video_name}_player.html"
@@ -368,8 +452,11 @@ class VideoPlayerTester:
 def main():
     print("=== Video Player Test Generator ===")
     
-    # Initialize storage handler
-    storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+    # Initialize storage handler with both configurations
+    storage = LeasewebStorageHandler(
+        control_config=LEASEWEB_CONTROL_CONFIG,
+        cdn_config=LEASEWEB_CDN_CONFIG
+    )
     
     # Check storage connection
     if not storage.check_connection():

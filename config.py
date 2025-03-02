@@ -9,17 +9,35 @@ if os.path.exists('.env'):
 # Base directory
 BASE_DIR = Path(__file__).parent
 
-# Leaseweb Object Storage Configuration
-LEASEWEB_CONFIG = {
+# Leaseweb Object Storage Configuration for Control Files (m3u8, keys)
+LEASEWEB_CONTROL_CONFIG = {
     'endpoint_url': os.getenv('LEASEWEB_ENDPOINT_URL', 'https://nl.object-storage.io'),
-    'bucket_name': os.getenv('LEASEWEB_BUCKET_NAME', 'private-bucket-nl'),
+    'bucket_name': os.getenv('LEASEWEB_CONTROL_BUCKET', 'hls-control-files'),
+    'access_key': os.getenv('LEASEWEB_ACCESS_KEY'),
+    'secret_key': os.getenv('LEASEWEB_SECRET_KEY'),
+    'region': os.getenv('LEASEWEB_REGION', 'nl')
+}
+
+# Leaseweb Object Storage Configuration for Segments (ts files)
+LEASEWEB_CDN_CONFIG = {
+    'endpoint_url': os.getenv('LEASEWEB_ENDPOINT_URL', 'https://nl.object-storage.io'),
+    'bucket_name': os.getenv('LEASEWEB_CDN_BUCKET', 'hls-segments-cdn'),
+    'access_key': os.getenv('LEASEWEB_ACCESS_KEY'),
+    'secret_key': os.getenv('LEASEWEB_SECRET_KEY'),
+    'region': os.getenv('LEASEWEB_REGION', 'nl')
+}
+
+# Leaseweb Object Storage Configuration for Private Bucket with Folders
+LEASEWEB_PRIVATE_CONFIG = {
+    'endpoint_url': os.getenv('LEASEWEB_ENDPOINT_URL', 'https://nl.object-storage.io'),
+    'bucket_name': os.getenv('LEASEWEB_PRIVATE_BUCKET', 'private-bucket-nl'),
     'access_key': os.getenv('LEASEWEB_ACCESS_KEY'),
     'secret_key': os.getenv('LEASEWEB_SECRET_KEY'),
     'region': os.getenv('LEASEWEB_REGION', 'nl')
 }
 
 # Validate required configuration
-if not LEASEWEB_CONFIG['access_key'] or not LEASEWEB_CONFIG['secret_key']:
+if not LEASEWEB_CONTROL_CONFIG['access_key'] or not LEASEWEB_CONTROL_CONFIG['secret_key']:
     raise ValueError("Missing required environment variables: LEASEWEB_ACCESS_KEY and/or LEASEWEB_SECRET_KEY")
 
 # Directory Configuration

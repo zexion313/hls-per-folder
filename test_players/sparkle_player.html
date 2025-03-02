@@ -36,16 +36,16 @@
             border-radius: 4px;
             display: none;
         }
-        #videoElement {
-            width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
         .status {
             margin-top: 10px;
             padding: 10px;
             background: #e8f5e9;
             border-radius: 4px;
+        }
+        #videoElement {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
         }
     </style>
 </head>
@@ -91,7 +91,14 @@
                 console.log(message);
             }
 
+            let hls = null;
+
             function initPlayer() {
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
+                }
+
                 if (!window.Hls) {
                     showError('HLS.js failed to load. Please check your internet connection.');
                     return;
@@ -106,27 +113,87 @@
                 updateStatus('HLS supported, creating player...');
                 
                 try {
-                    const hls = new Hls({
-                        debug: true,
-                        enableWorker: false,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 600,
-                        maxBufferSize: 60 * 1000 * 1000,
-                        maxBufferHole: 0.5,
+                    hls = new Hls({
+                        debug: false,
+                        enableWorker: true,
                         lowLatencyMode: false,
-                        manifestLoadingTimeOut: 20000,
-                        manifestLoadingMaxRetry: 4,
-                        levelLoadingTimeOut: 20000,
-                        levelLoadingMaxRetry: 4,
-                        fragLoadingTimeOut: 20000,
-                        fragLoadingMaxRetry: 6
+                        backBufferLength: 90,
+                        minBufferLength: 10,
+                        maxBufferLength: 60,
+                        maxMaxBufferLength: 600,
+                        maxBufferSize: 600 * 1000 * 1000,
+                        maxBufferHole: 1,
+                        highBufferWatchdogPeriod: 5,
+                        abrEwmaDefaultEstimate: 500000,
+                        abrBandWidthFactor: 0.95,
+                        abrBandWidthUpFactor: 0.7,
+                        abrMaxWithRealBitrate: true,
+                        manifestLoadPolicy: {
+                            default: {
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                },
+                                errorRetry: {
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }
+                            }
+                        },
+                        playlistLoadPolicy: {
+                            default: {
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                },
+                                errorRetry: {
+                                    maxNumRetry: 6,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }
+                            }
+                        },
+                        fragLoadPolicy: {
+                            default: {
+                                maxTimeToFirstByteMs: 30000,
+                                maxLoadTimeMs: 30000,
+                                timeoutRetry: {
+                                    maxNumRetry: 8,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                },
+                                errorRetry: {
+                                    maxNumRetry: 8,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }
+                            }
+                        },
+                        nudgeOffset: 0.3,
+                        nudgeMaxRetry: 10,
+                        startLevel: 0,
+                        abrEwmaFastLive: 2,
+                        abrEwmaSlowLive: 5,
+                        abrEwmaFastVoD: 2,
+                        abrEwmaSlowVoD: 5,
+                        testBandwidth: true,
+                        progressive: true,
+                        autoStartLoad: true,
+                        startFragPrefetch: true
                     });
 
                     hls.on(Hls.Events.MEDIA_ATTACHED, function() {
                         updateStatus('Media attached, loading manifest...');
                     });
 
-                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
                         updateStatus('Manifest loaded, starting playback...');
                         video.play().catch(function(error) {
                             console.warn('Autoplay prevented:', error);
@@ -149,10 +216,9 @@
                                 default:
                                     updateStatus('Fatal error: ' + data.type);
                                     showError('Fatal HLS Error:\n' + JSON.stringify(data, null, 2));
+                                    setTimeout(initPlayer, 2000);
                                     break;
                             }
-                        } else {
-                            updateStatus('Recovered from error: ' + data.type);
                         }
                     });
 
@@ -166,20 +232,13 @@
                         hls.loadSource('/proxy/videos/sparkle/stream.m3u8');
                     }, 100);
 
-                    // Add quality level selection
-                    hls.on(Hls.Events.LEVEL_LOADED, function(event, data) {
-                        if (data.details) {
-                            updateStatus('Playing - ' + data.details.totalduration.toFixed(1) + 's total duration');
-                        }
-                    });
-
                     // Monitor buffer state
                     setInterval(function() {
                         if (video.buffered.length > 0) {
                             const bufferedEnd = video.buffered.end(video.buffered.length - 1);
                             const duration = video.duration;
                             const bufferedPercent = (bufferedEnd / duration * 100).toFixed(1);
-                            console.log('Buffer: ' + bufferedPercent + '%');
+                            updateStatus('Buffer: ' + bufferedPercent + '%');
                         }
                     }, 3000);
 

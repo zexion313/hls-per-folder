@@ -5,7 +5,7 @@ import subprocess
 import shutil
 from pathlib import Path
 from typing import Dict, Optional
-from config import LEASEWEB_CONFIG, INPUT_DIR, OUTPUT_DIR, FFMPEG_PATH, SEGMENT_DURATION, KEY_LENGTH
+from config import LEASEWEB_CONTROL_CONFIG, LEASEWEB_CDN_CONFIG, INPUT_DIR, OUTPUT_DIR, FFMPEG_PATH, SEGMENT_DURATION, KEY_LENGTH
 from storage_handler import LeasewebStorageHandler
 
 class VideoProcessor:
@@ -203,8 +203,11 @@ class VideoProcessor:
 def main():
     print("=== Video Processing System ===")
     
-    # Initialize storage handler
-    storage = LeasewebStorageHandler(LEASEWEB_CONFIG)
+    # Initialize storage handler with both configurations
+    storage = LeasewebStorageHandler(
+        control_config=LEASEWEB_CONTROL_CONFIG,
+        cdn_config=LEASEWEB_CDN_CONFIG
+    )
     
     # Initialize video processor
     processor = VideoProcessor(
