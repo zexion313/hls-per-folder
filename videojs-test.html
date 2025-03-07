@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video.js TS Player</title>
+
+    <!-- Video.js CSS -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+
+    <style>
+        .video-container {
+            max-width: 1024px;
+            margin: 20px auto;
+            position: relative;
+        }
+        .button-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 5px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .video-info {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .player-controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .skip-button {
+            background: #4CAF50;
+        }
+        .skip-button:hover {
+            background: #388E3C;
+        }
+        .error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <h1 style="text-align: center;">Video Player</h1>
+        
+        <div class="video-info">
+            <div>Currently playing: <span id="current-video">Not selected</span></div>
+            <div>Source: <span id="source-type">Not selected</span></div>
+        </div>
+
+        <div class="error-message" id="error-message"></div>
+
+        <video-js 
+            id="my_video_1" 
+            class="vjs-default-skin vjs-big-play-button vjs-fluid" 
+            controls 
+            preload="auto"
+            width="1024" 
+            height="576"
+            data-setup='{"fluid": true, "playbackRates": [0.5, 1, 1.5, 2]}'
+        >
+            <source src="" type="video/mp2t">
+            <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a
+                web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+            </p>
+        </video-js>
+
+        <div class="player-controls">
+            <button onclick="toggleAutoplay()">Toggle Autoplay</button>
+            <button onclick="toggleFullscreen()">Toggle Fullscreen</button>
+            <button class="skip-button" onclick="skipForward()">Skip 10s</button>
+            <button class="skip-button" onclick="skipBackward()">Back 10s</button>
+        </div>
+
+        <div class="button-container">
+            <button onclick="loadVideo('song')">Play Song</button>
+            <button onclick="loadVideo('sparkle')">Play Sparkle</button>
+            <button onclick="loadVideo('your-time')">Play Your Time</button>
+        </div>
+    </div>
+
+    <!-- Video.js -->
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+
+    <script>
+        const CDN_BASE_URL = 'https://di-yusrkfqf.leasewebultracdn.com/Example_folder_for_TS';
+        const PROXY_BASE_URL = 'https://hls-per-folder-production.up.railway.app/play';
+        
+        // Configure Video.js
+        var player = videojs('my_video_1', {
+            fluid: true,
+            controls: true,
+            autoplay: false,
+            preload: 'auto',
+            playbackRates: [0.5, 1, 1.5, 2],
+            html5: {
+                nativeVideoTracks: true,
+                nativeAudioTracks: true,
+                nativeTextTracks: true
+            }
+        });
+
+        // Player controls
+        function toggleAutoplay() {
+            player.autoplay(!player.autoplay());
+            alert(`Autoplay is now ${player.autoplay() ? 'enabled' : 'disabled'}`);
+        }
+
+        function toggleFullscreen() {
+            if (player.isFullscreen()) {
+                player.exitFullscreen();
+            } else {
+                player.requestFullscreen();
+            }
+        }
+
+        function skipForward() {
+            player.currentTime(player.currentTime() + 10);
+        }
+
+        function skipBackward() {
+            player.currentTime(player.currentTime() - 10);
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function clearError() {
+            const errorElement = document.getElementById('error-message');
+            errorElement.style.display = 'none';
+        }
+
+        // Video loading
+        function loadVideo(videoName) {
+            clearError();
+            // Update UI
+            document.getElementById('current-video').textContent = videoName;
+            
+            // Direct TS file URL
+            const tsUrl = `${CDN_BASE_URL}/${videoName}/${videoName}.ts`;
+            
+            // Try to load the TS file
+            tryPlayVideo(tsUrl, videoName);
+        }
+
+        function tryPlayVideo(tsUrl, videoName) {
+            // Set source
+            player.src({
+                src: tsUrl,
+                type: 'video/mp2t'
+            });
+
+            // Error handling
+            player.on('error', function() {
+                const error = player.error();
+                console.error('Video.js Error:', error);
+                
+                if (error.code === 4) {
+                    console.log('Direct TS playback failed, trying proxy...');
+                    document.getElementById('source-type').textContent = 'Proxy';
+                    
+                    // Switch to proxy
+                    player.src({
+                        src: `${PROXY_BASE_URL}/${videoName}`,
+                        type: 'application/x-mpegURL'
+                    });
+                }
+
+                showError(`Playback error: ${error.message}`);
+            });
+
+            // On successful load
+            player.on('loadedmetadata', function() {
+                clearError();
+                document.getElementById('source-type').textContent = 
+                    player.currentSrc().includes('leasewebultracdn') ? 'CDN (Direct TS)' : 'Proxy (HLS)';
+            });
+
+            player.load();
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', function(e) {
+            switch(e.key) {
+                case 'f':
+                    toggleFullscreen();
+                    break;
+                case ' ':
+                    if (player.paused()) {
+                        player.play();
+                    } else {
+                        player.pause();
+                    }
+                    break;
+                case 'ArrowRight':
+                    skipForward();
+                    break;
+                case 'ArrowLeft':
+                    skipBackward();
+                    break;
+            }
+        });
+
+        // Initialize with first video
+        window.onload = function() {
+            loadVideo('song');
+        };
+    </script>
+</body>
+</html> 

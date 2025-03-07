@@ -190,11 +190,14 @@ class VideoProcessor:
                 "-c:a", "copy",
                 "-force_key_frames", "expr:gte(t,n_forced*1)",
                 "-f", "hls",
-                "-hls_time", str(SEGMENT_DURATION),
+                "-hls_time", "2.000",
                 "-movflags", "+faststart",
                 "-hls_segment_type", "mpegts",
                 "-hls_list_size", "0",
+                "-hls_flags", "independent_segments",
+                "-hls_segment_filename", str(video_dir / f"{video_name}_%03d.ts"),
                 "-hls_flags", "single_file",
+                "-hls_list_size", "0",
                 "-hls_key_info_file", str(key_info_path),
                 "-hls_playlist_type", "vod",
                 str(video_dir / "stream.m3u8")
@@ -217,7 +220,7 @@ class VideoProcessor:
                 print(f"stream.m3u8 was created successfully, size: {os.path.getsize(video_dir / 'stream.m3u8')} bytes")
                 
             # In single file mode, FFmpeg creates a file named stream0.ts
-            ts_file = video_dir / "stream0.ts"
+            ts_file = video_dir / f"{video_name}_000.ts"  # Updated to match new naming pattern
             if not ts_file.exists():
                 print(f"Warning: {ts_file.name} was not created!")
             else:

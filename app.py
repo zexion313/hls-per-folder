@@ -154,17 +154,22 @@ def proxy_key(key_name):
 def play_video(video_id):
     """Render the video player for the selected video."""
     m3u8_url = f'https://di-yusrkfqf.leasewebultracdn.com/Example_folder_for_m3u8/{video_id}/stream.m3u8'
+    # Get video name from HLSPlayer
+    player = HLSPlayer(storage_handler)
+    video_info = player.get_video_info(video_id, m3u8_url)
+    video_name = video_info['name'] if video_info else video_id
+    
     return render_template_string('''
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Video Player</title>
+        <title>{{ video_name }} - Video Player</title>
         <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
         <script src="https://unpkg.com/video.js/dist/video.js"></script>
         <script src="https://unpkg.com/@videojs/http-streaming/dist/videojs-http-streaming.js"></script>
     </head>
     <body>
-        <h1>Now Playing: Video {video_id}</h1>
+        <h1>Now Playing: {{ video_name }}</h1>
         <video id="video-player" class="video-js" controls preload="auto" width="640" height="264">
             <source src="{{ m3u8_url }}" type="application/x-mpegURL">
         </video>
@@ -173,7 +178,7 @@ def play_video(video_id):
         </script>
     </body>
     </html>
-    ''', video_id=video_id, m3u8_url=m3u8_url)
+    ''', video_id=video_id, m3u8_url=m3u8_url, video_name=video_name)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True) 
