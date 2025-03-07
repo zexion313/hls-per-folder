@@ -171,4 +171,16 @@ class FolderStorageHandler:
             return url
         except Exception as e:
             print(f"Error generating presigned URL: {str(e)}")
-            return None 
+            return None
+
+    def list_videos(self):
+        """List all .m3u8 video files in the Example_folder_for_m3u8 folder."""
+        video_ids = []
+        response = self.session.list_objects_v2(Bucket=self.bucket, Prefix='Example_folder_for_m3u8/')
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                if obj['Key'].endswith('.m3u8'):
+                    # Extract folder name from the object key
+                    folder_name = obj['Key'].split('/')[-2]  # Get the folder name
+                    video_ids.append(folder_name)  # Use folder name as video ID
+        return list(set(video_ids))  # Return unique folder names 
