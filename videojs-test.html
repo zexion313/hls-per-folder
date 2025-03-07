@@ -3,16 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video.js TS Player</title>
+    <title>Video.js Player</title>
 
     <!-- Video.js CSS -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
 
     <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
         .video-container {
             max-width: 1024px;
             margin: 20px auto;
-            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .button-container {
             text-align: center;
@@ -27,9 +36,14 @@
             color: white;
             border: none;
             border-radius: 4px;
+            transition: background 0.3s ease;
         }
         button:hover {
             background: #1976D2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
         .video-info {
             background: #f8f9fa;
@@ -42,6 +56,7 @@
             display: flex;
             gap: 10px;
             justify-content: center;
+            flex-wrap: wrap;
         }
         .skip-button {
             background: #4CAF50;
@@ -58,6 +73,19 @@
             border-radius: 4px;
             display: none;
         }
+        .status-message {
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .video-js {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16/9;
+        }
     </style>
 </head>
 <body>
@@ -67,20 +95,19 @@
         <div class="video-info">
             <div>Currently playing: <span id="current-video">Not selected</span></div>
             <div>Source: <span id="source-type">Not selected</span></div>
+            <div>Status: <span id="player-status">Not started</span></div>
         </div>
 
         <div class="error-message" id="error-message"></div>
+        <div class="status-message" id="status-message">Loading player...</div>
 
         <video-js 
             id="my_video_1" 
-            class="vjs-default-skin vjs-big-play-button vjs-fluid" 
+            class="vjs-default-skin vjs-big-play-centered" 
             controls 
             preload="auto"
-            width="1024" 
-            height="576"
             data-setup='{"fluid": true, "playbackRates": [0.5, 1, 1.5, 2]}'
         >
-            <source src="" type="video/mp2t">
             <p class="vjs-no-js">
                 To view this video please enable JavaScript, and consider upgrading to a
                 web browser that <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
@@ -88,10 +115,16 @@
         </video-js>
 
         <div class="player-controls">
-            <button onclick="toggleAutoplay()">Toggle Autoplay</button>
-            <button onclick="toggleFullscreen()">Toggle Fullscreen</button>
-            <button class="skip-button" onclick="skipForward()">Skip 10s</button>
-            <button class="skip-button" onclick="skipBackward()">Back 10s</button>
+            <button onclick="toggleAutoplay()" id="autoplay-btn">Toggle Autoplay</button>
+            <button onclick="toggleFullscreen()" id="fullscreen-btn">Toggle Fullscreen</button>
+            <button class="skip-button" onclick="skipForward()" id="forward-btn">Skip 10s</button>
+            <button class="skip-button" onclick="skipBackward()" id="backward-btn">Back 10s</button>
+            <select id="playback-speed" onchange="changePlaybackSpeed(this.value)">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+            </select>
         </div>
 
         <div class="button-container">
@@ -105,10 +138,13 @@
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
 
     <script>
-        const CDN_BASE_URL = 'https://di-yusrkfqf.leasewebultracdn.com/Example_folder_for_TS';
-        const PROXY_BASE_URL = 'https://hls-per-folder-production.up.railway.app/play';
+        // Configuration
+        const CDN_BASE_URL = 'https://di-yusrkfqf.leasewebultracdn.com';
+        const TS_FOLDER = 'Example_folder_for_TS';
+        const M3U8_FOLDER = 'Example_folder_for_m3u8';
+        const PROXY_BASE_URL = 'https://hls-per-folder-production.up.railway.app/proxy';
         
-        // Configure Video.js
+        // Initialize Video.js
         var player = videojs('my_video_1', {
             fluid: true,
             controls: true,
@@ -116,16 +152,31 @@
             preload: 'auto',
             playbackRates: [0.5, 1, 1.5, 2],
             html5: {
-                nativeVideoTracks: true,
-                nativeAudioTracks: true,
-                nativeTextTracks: true
+                vhs: {
+                    overrideNative: true,
+                    withCredentials: false,
+                    useBandwidthFromLocalStorage: true,
+                    handleManifestRedirects: true,
+                    handlePartialData: true
+                },
+                nativeVideoTracks: false,
+                nativeAudioTracks: false,
+                nativeTextTracks: false
             }
         });
+
+        // UI Elements
+        const statusMessage = document.getElementById('status-message');
+        const playerStatus = document.getElementById('player-status');
+        const currentVideo = document.getElementById('current-video');
+        const sourceType = document.getElementById('source-type');
+        const errorMessage = document.getElementById('error-message');
 
         // Player controls
         function toggleAutoplay() {
             player.autoplay(!player.autoplay());
-            alert(`Autoplay is now ${player.autoplay() ? 'enabled' : 'disabled'}`);
+            document.getElementById('autoplay-btn').textContent = 
+                `Autoplay: ${player.autoplay() ? 'On' : 'Off'}`;
         }
 
         function toggleFullscreen() {
@@ -144,65 +195,159 @@
             player.currentTime(player.currentTime() - 10);
         }
 
-        function showError(message) {
-            const errorElement = document.getElementById('error-message');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
+        function changePlaybackSpeed(speed) {
+            player.playbackRate(parseFloat(speed));
         }
 
-        function clearError() {
-            const errorElement = document.getElementById('error-message');
-            errorElement.style.display = 'none';
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            statusMessage.style.display = 'none';
+        }
+
+        function showStatus(message) {
+            statusMessage.textContent = message;
+            statusMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function updatePlayerStatus(status) {
+            playerStatus.textContent = status;
+        }
+
+        // Pre-check video availability
+        async function checkVideoAvailability(videoName) {
+            try {
+                // Try TS file first
+                const tsUrl = `${CDN_BASE_URL}/${TS_FOLDER}/${videoName}/${videoName}.ts`;
+                const tsResponse = await fetch(tsUrl, { method: 'HEAD' });
+                
+                if (tsResponse.ok) {
+                    return { available: true, type: 'ts', url: tsUrl };
+                }
+
+                // Try M3U8 file
+                const m3u8Url = `${CDN_BASE_URL}/${M3U8_FOLDER}/${videoName}/stream.m3u8`;
+                const m3u8Response = await fetch(m3u8Url, { method: 'HEAD' });
+                
+                if (m3u8Response.ok) {
+                    return { available: true, type: 'm3u8', url: m3u8Url };
+                }
+
+                return { available: false };
+            } catch (error) {
+                console.log('Pre-check failed:', error);
+                return { available: false, error };
+            }
         }
 
         // Video loading
-        function loadVideo(videoName) {
-            clearError();
-            // Update UI
-            document.getElementById('current-video').textContent = videoName;
+        async function loadVideo(videoName) {
+            showStatus('Loading video...');
+            currentVideo.textContent = videoName;
             
-            // Direct TS file URL
-            const tsUrl = `${CDN_BASE_URL}/${videoName}/${videoName}.ts`;
-            
-            // Try to load the TS file
-            tryPlayVideo(tsUrl, videoName);
-        }
-
-        function tryPlayVideo(tsUrl, videoName) {
-            // Set source
-            player.src({
-                src: tsUrl,
-                type: 'video/mp2t'
-            });
-
-            // Error handling
-            player.on('error', function() {
-                const error = player.error();
-                console.error('Video.js Error:', error);
+            try {
+                // Try direct TS playback first
+                const tsUrl = `${CDN_BASE_URL}/${TS_FOLDER}/${videoName}/${videoName}.ts`;
+                showStatus('Starting direct TS playback...');
                 
-                if (error.code === 4) {
-                    console.log('Direct TS playback failed, trying proxy...');
-                    document.getElementById('source-type').textContent = 'Proxy';
-                    
-                    // Switch to proxy
-                    player.src({
-                        src: `${PROXY_BASE_URL}/${videoName}`,
-                        type: 'application/x-mpegURL'
-                    });
+                // First try to check if the TS file exists
+                try {
+                    const response = await fetch(tsUrl, { method: 'HEAD' });
+                    if (response.ok) {
+                        player.src({
+                            src: tsUrl,
+                            type: 'video/mp2t'
+                        });
+                        sourceType.textContent = 'Direct TS (CDN)';
+                        return;
+                    }
+                } catch (error) {
+                    console.log('TS file not accessible:', error);
                 }
 
-                showError(`Playback error: ${error.message}`);
-            });
+                // If TS fails, try HLS
+                showStatus('TS not available, trying HLS...');
+                const m3u8Url = `${CDN_BASE_URL}/${M3U8_FOLDER}/${videoName}/stream.m3u8`;
+                
+                // Check if m3u8 exists
+                try {
+                    const response = await fetch(m3u8Url, { method: 'HEAD' });
+                    if (response.ok) {
+                        // Try direct m3u8 first
+                        player.src({
+                            src: m3u8Url,
+                            type: 'application/x-mpegURL',
+                            withCredentials: false
+                        });
+                        sourceType.textContent = 'Direct HLS (CDN)';
+                        
+                        // If direct m3u8 fails, try proxy
+                        player.one('error', () => {
+                            console.log('Direct HLS failed, trying proxy...');
+                            const proxyUrl = `${PROXY_BASE_URL}/${videoName}`;
+                            player.src({
+                                src: proxyUrl,
+                                type: 'application/x-mpegURL',
+                                withCredentials: false
+                            });
+                            sourceType.textContent = 'HLS via Proxy';
+                        });
+                        return;
+                    }
+                } catch (error) {
+                    console.log('M3U8 file not accessible:', error);
+                }
 
-            // On successful load
-            player.on('loadedmetadata', function() {
-                clearError();
-                document.getElementById('source-type').textContent = 
-                    player.currentSrc().includes('leasewebultracdn') ? 'CDN (Direct TS)' : 'Proxy (HLS)';
-            });
-
-            player.load();
+                showError('No playable sources found for this video');
+                
+            } catch (error) {
+                console.error('Error loading video:', error);
+                showError(`Failed to load video: ${error.message}`);
+            }
         }
+
+        // Event Handlers
+        player.on('loadstart', () => {
+            updatePlayerStatus('Loading...');
+            showStatus('Loading video stream...');
+        });
+
+        player.on('loadedmetadata', () => {
+            showStatus('Video loaded successfully');
+            updatePlayerStatus('Ready');
+        });
+
+        player.on('playing', () => {
+            updatePlayerStatus('Playing');
+            showStatus('');
+        });
+
+        player.on('pause', () => {
+            updatePlayerStatus('Paused');
+        });
+
+        player.on('waiting', () => {
+            updatePlayerStatus('Buffering...');
+            showStatus('Buffering video...');
+        });
+
+        player.on('error', function(error) {
+            const err = player.error();
+            console.error('Player error:', err);
+            
+            // Get detailed error information
+            const errorDetails = {
+                code: err.code,
+                message: err.message,
+                type: player.currentType(),
+                source: player.currentSrc()
+            };
+            console.log('Error details:', errorDetails);
+            
+            showError(`Playback error (${err.code}): ${err.message}`);
+            updatePlayerStatus('Error');
+        });
 
         // Keyboard controls
         document.addEventListener('keydown', function(e) {
@@ -216,6 +361,7 @@
                     } else {
                         player.pause();
                     }
+                    e.preventDefault();
                     break;
                 case 'ArrowRight':
                     skipForward();
@@ -226,9 +372,9 @@
             }
         });
 
-        // Initialize with first video
+        // Initialize
         window.onload = function() {
-            loadVideo('song');
+            showStatus('Player ready. Click a video to start playing.');
         };
     </script>
 </body>

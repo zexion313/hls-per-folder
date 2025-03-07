@@ -197,7 +197,6 @@ class VideoProcessor:
                 "-hls_flags", "independent_segments",
                 "-hls_segment_filename", str(video_dir / f"{video_name}_%03d.ts"),
                 "-hls_flags", "single_file",
-                "-hls_list_size", "0",
                 "-hls_key_info_file", str(key_info_path),
                 "-hls_playlist_type", "vod",
                 str(video_dir / "stream.m3u8")
