@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video.js Player</title>
+    <title>Video.js Player - Encrypted HLS</title>
 
     <!-- Video.js CSS -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
@@ -90,7 +90,7 @@
 </head>
 <body>
     <div class="video-container">
-        <h1 style="text-align: center;">Video Player</h1>
+        <h1 style="text-align: center;">Encrypted HLS Video Player</h1>
         
         <div class="video-info">
             <div>Currently playing: <span id="current-video">Not selected</span></div>
@@ -106,6 +106,7 @@
             class="vjs-default-skin vjs-big-play-centered" 
             controls 
             preload="auto"
+            crossorigin="anonymous"
             data-setup='{"fluid": true, "playbackRates": [0.5, 1, 1.5, 2]}'
         >
             <p class="vjs-no-js">
@@ -129,20 +130,23 @@
 
         <div class="button-container">
             <button onclick="loadVideo('song')">Play Song</button>
-            <button onclick="loadVideo('sparkle')">Play Sparkle</button>
-            <button onclick="loadVideo('your-time')">Play Your Time</button>
+            <button onclick="loadVideo('blue')">Play Blue</button>
         </div>
     </div>
 
-    <!-- Video.js -->
+    <!-- Video.js Core -->
     <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    
+    <!-- Required for HLS -->
+    <script src="https://cdn.jsdelivr.net/npm/videojs-contrib-eme@4.0.1/dist/videojs-contrib-eme.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@videojs/http-streaming@3.0.0/dist/videojs-http-streaming.min.js"></script>
 
     <script>
         // Configuration
         const CDN_BASE_URL = 'https://di-yusrkfqf.leasewebultracdn.com';
         const TS_FOLDER = 'Example_folder_for_TS';
         const M3U8_FOLDER = 'Example_folder_for_m3u8';
-        const PROXY_BASE_URL = 'https://hls-per-folder-production.up.railway.app/proxy';
+        const KEY_FOLDER = 'Example_folder_for_Key';
         
         // Initialize Video.js
         var player = videojs('my_video_1', {
@@ -157,13 +161,60 @@
                     withCredentials: false,
                     useBandwidthFromLocalStorage: true,
                     handleManifestRedirects: true,
-                    handlePartialData: true
+                    handlePartialData: true,
+                    maxPlaylistRetries: 5,
+                    // Add more debug options
+                    debug: true,
+                    captureSegmentTimingInfo: true
                 },
                 nativeVideoTracks: false,
                 nativeAudioTracks: false,
                 nativeTextTracks: false
+            },
+            liveui: true,
+            liveTracker: {
+                trackingThreshold: 0
             }
         });
+
+        // Enable advanced debugging for HLS/media loading
+        if (window.videojs && videojs.log) {
+            videojs.log.level('debug');
+        }
+
+        // Create a CORS-safe fetch function
+        async function corsProxyFetch(url) {
+            // Try direct fetch first
+            try {
+                const response = await fetch(url, {
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Accept': '*/*'
+                    }
+                });
+                return response;
+            } catch (error) {
+                // If CORS fails, try through a CORS proxy if available
+                console.log('Direct fetch failed, trying alternatives');
+                
+                // Option 1: Try using a CORS proxy if available
+                const corsProxies = [
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?'
+                ];
+                
+                // Use one of the proxies (you might need to register for cors-anywhere)
+                const proxyUrl = corsProxies[2] + encodeURIComponent(url);
+                console.log('Trying CORS proxy:', proxyUrl);
+                
+                return fetch(proxyUrl, {
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+            }
+        }
 
         // UI Elements
         const statusMessage = document.getElementById('status-message');
@@ -215,121 +266,124 @@
             playerStatus.textContent = status;
         }
 
-        // Pre-check video availability
-        async function checkVideoAvailability(videoName) {
-            try {
-                // Try TS file first
-                const tsUrl = `${CDN_BASE_URL}/${TS_FOLDER}/${videoName}/${videoName}.ts`;
-                const tsResponse = await fetch(tsUrl, { method: 'HEAD' });
-                
-                if (tsResponse.ok) {
-                    return { available: true, type: 'ts', url: tsUrl };
-                }
-
-                // Try M3U8 file
-                const m3u8Url = `${CDN_BASE_URL}/${M3U8_FOLDER}/${videoName}/stream.m3u8`;
-                const m3u8Response = await fetch(m3u8Url, { method: 'HEAD' });
-                
-                if (m3u8Response.ok) {
-                    return { available: true, type: 'm3u8', url: m3u8Url };
-                }
-
-                return { available: false };
-            } catch (error) {
-                console.log('Pre-check failed:', error);
-                return { available: false, error };
-            }
-        }
-
         // Video loading
-        async function loadVideo(videoName) {
-            showStatus('Loading video...');
+        function loadVideo(videoName) {
+            showStatus('Loading encrypted HLS video...');
             currentVideo.textContent = videoName;
             
             try {
-                // Try direct TS playback first
-                const tsUrl = `${CDN_BASE_URL}/${TS_FOLDER}/${videoName}/${videoName}.ts`;
-                showStatus('Starting direct TS playback...');
-                
-                // First try to check if the TS file exists
-                try {
-                    const response = await fetch(tsUrl, { method: 'HEAD' });
-                    if (response.ok) {
-                        player.src({
-                            src: tsUrl,
-                            type: 'video/mp2t'
-                        });
-                        sourceType.textContent = 'Direct TS (CDN)';
-                        return;
-                    }
-                } catch (error) {
-                    console.log('TS file not accessible:', error);
-                }
-
-                // If TS fails, try HLS
-                showStatus('TS not available, trying HLS...');
+                // Load HLS playlist directly
                 const m3u8Url = `${CDN_BASE_URL}/${M3U8_FOLDER}/${videoName}/stream.m3u8`;
+                console.log('Loading HLS stream:', m3u8Url);
                 
-                // Check if m3u8 exists
-                try {
-                    const response = await fetch(m3u8Url, { method: 'HEAD' });
-                    if (response.ok) {
-                        // Try direct m3u8 first
-                        player.src({
-                            src: m3u8Url,
-                            type: 'application/x-mpegURL',
-                            withCredentials: false
-                        });
-                        sourceType.textContent = 'Direct HLS (CDN)';
-                        
-                        // If direct m3u8 fails, try proxy
-                        player.one('error', () => {
-                            console.log('Direct HLS failed, trying proxy...');
-                            const proxyUrl = `${PROXY_BASE_URL}/${videoName}`;
-                            player.src({
-                                src: proxyUrl,
-                                type: 'application/x-mpegURL',
-                                withCredentials: false
-                            });
-                            sourceType.textContent = 'HLS via Proxy';
-                        });
-                        return;
-                    }
-                } catch (error) {
-                    console.log('M3U8 file not accessible:', error);
-                }
-
-                showError('No playable sources found for this video');
+                // Reset player state
+                player.reset();
                 
+                // Add timestamp to bypass cache
+                const cacheBuster = `?t=${Date.now()}`;
+                
+                player.src({
+                    src: m3u8Url + cacheBuster,
+                    type: 'application/x-mpegURL',
+                    withCredentials: false,
+                    crossOrigin: 'anonymous'
+                });
+                
+                sourceType.textContent = 'Encrypted HLS (CDN)';
+                
+                // Delay play to give time for setup
+                setTimeout(() => {
+                    player.play().catch(e => {
+                        console.error('Play error:', e);
+                        showError(`Playback error: ${e.message}`);
+                    });
+                }, 500);
             } catch (error) {
                 console.error('Error loading video:', error);
                 showError(`Failed to load video: ${error.message}`);
             }
         }
 
+        // Add a direct URL test functionality
+        function testDirectUrl(videoName) {
+            const tsUrl = `${CDN_BASE_URL}/${TS_FOLDER}/${videoName}/${videoName}.ts`;
+            const keyUrl = `${CDN_BASE_URL}/${KEY_FOLDER}/${videoName}.key`;
+            const m3u8Url = `${CDN_BASE_URL}/${M3U8_FOLDER}/${videoName}/stream.m3u8`;
+            
+            console.log('Testing direct access to resources:');
+            console.log('TS URL:', tsUrl);
+            console.log('Key URL:', keyUrl);
+            console.log('M3U8 URL:', m3u8Url);
+            
+            // Add test buttons
+            const container = document.createElement('div');
+            container.style.margin = '20px 0';
+            container.style.padding = '10px';
+            container.style.backgroundColor = '#f5f5f5';
+            container.style.borderRadius = '4px';
+            
+            container.innerHTML = `
+                <h3>Resource Testing</h3>
+                <p>Test direct access to resources:</p>
+                <button onclick="window.open('${m3u8Url}', '_blank')">Test M3U8</button>
+                <button onclick="window.open('${tsUrl}', '_blank')">Test TS File</button>
+                <button onclick="testFetch('${tsUrl}', 'TS File')">Fetch TS</button>
+                <button onclick="testFetch('${m3u8Url}', 'M3U8')">Fetch M3U8</button>
+            `;
+            
+            document.querySelector('.video-container').appendChild(container);
+        }
+        
+        // Fetch test function
+        function testFetch(url, type) {
+            showStatus(`Testing direct fetch of ${type}...`);
+            
+            corsProxyFetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    showStatus(`${type} fetch successful! Status: ${response.status}`);
+                    console.log(`${type} response:`, response);
+                    return response.text();
+                })
+                .then(data => {
+                    console.log(`${type} data (first 100 chars):`, data.substring(0, 100));
+                })
+                .catch(error => {
+                    showError(`${type} fetch failed: ${error.message}`);
+                    console.error(`${type} fetch error:`, error);
+                });
+        }
+
         // Event Handlers
         player.on('loadstart', () => {
             updatePlayerStatus('Loading...');
             showStatus('Loading video stream...');
+            console.log('Video loading started');
         });
 
         player.on('loadedmetadata', () => {
             showStatus('Video loaded successfully');
             updatePlayerStatus('Ready');
+            console.log('Video metadata loaded');
         });
 
         player.on('playing', () => {
             updatePlayerStatus('Playing');
             showStatus('');
+            console.log('Video is playing');
         });
 
         player.on('pause', () => {
             updatePlayerStatus('Paused');
+            console.log('Video paused');
         });
 
         player.on('waiting', () => {
             updatePlayerStatus('Buffering...');
             showStatus('Buffering video...');
+            console.log('Video buffering');
         });
 
         player.on('error', function(error) {
@@ -341,12 +395,38 @@
                 code: err.code,
                 message: err.message,
                 type: player.currentType(),
-                source: player.currentSrc()
+                source: player.currentSrc(),
+                readyState: player.readyState(),
+                networkState: player.networkState(),
+                currentTime: player.currentTime()
             };
             console.log('Error details:', errorDetails);
             
             showError(`Playback error (${err.code}): ${err.message}`);
             updatePlayerStatus('Error');
+        });
+
+        // Add debug events for better visibility
+        player.on('progress', () => {
+            console.log('Loading progress:', player.bufferedPercent());
+        });
+
+        player.on('canplay', () => {
+            console.log('Video can play');
+        });
+
+        player.on('canplaythrough', () => {
+            console.log('Video can play through');
+        });
+
+        // Debug information for encrypted content
+        player.on('keyerror', (event) => {
+            console.error('Key error:', event);
+            showError('Encryption key error: Unable to decrypt content');
+        });
+
+        player.on('keymessage', (event) => {
+            console.log('Key message:', event);
         });
 
         // Keyboard controls
@@ -375,6 +455,21 @@
         // Initialize
         window.onload = function() {
             showStatus('Player ready. Click a video to start playing.');
+            console.log('Using CDN base URL:', CDN_BASE_URL);
+            
+            // Add diagnostics buttons to the page
+            const diagDiv = document.createElement('div');
+            diagDiv.className = 'button-container';
+            diagDiv.innerHTML = `
+                <h3>Diagnostics</h3>
+                <button onclick="testDirectUrl('song')">Test Song Resources</button>
+                <button onclick="testDirectUrl('blue')">Test Blue Resources</button>
+            `;
+            document.querySelector('.video-container').appendChild(diagDiv);
+            
+            // Log browser capabilities
+            console.log('Browser can play HLS natively:', document.createElement('video').canPlayType('application/vnd.apple.mpegurl'));
+            console.log('Browser can play MP4:', document.createElement('video').canPlayType('video/mp4'));
         };
     </script>
 </body>

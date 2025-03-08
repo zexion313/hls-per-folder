@@ -9,6 +9,9 @@ from typing import Dict, Optional
 from config import INPUT_DIR, OUTPUT_DIR, FFMPEG_PATH, SEGMENT_DURATION, KEY_LENGTH, LEASEWEB_PRIVATE_CONFIG
 from folder_storage_handler import FolderStorageHandler
 
+# Add CDN configuration
+CDN_BASE_URL = 'https://di-yusrkfqf.leasewebultracdn.com'
+
 class VideoProcessor:
     def __init__(self, input_dir: str, output_dir: str, storage_handler: FolderStorageHandler):
         self.input_dir = Path(input_dir)
@@ -87,10 +90,16 @@ class VideoProcessor:
         with open(key_path, 'wb') as f:
             f.write(key)
         
-        # Write the key info file
+        # Write the key info file with CDN URL
         key_info_path = video_dir / "key_info"
+        cdn_key_url = f"{CDN_BASE_URL}/Example_folder_for_Key/{key_filename}"
         with open(key_info_path, 'w') as f:
-            f.write(f"{key_filename}\n{str(key_path)}\n")
+            f.write(f"{key_filename}\n{cdn_key_url}\n")
+            
+        # Also create a key info file with just the local path for FFmpeg
+        temp_key_info_path = video_dir / "temp_key_info"
+        with open(temp_key_info_path, 'w') as f:
+            f.write(f"{key_filename}\n{key_path}\n")
             
         return key_info_path
 
@@ -164,6 +173,34 @@ class VideoProcessor:
             print(f"Error modifying iframe playlist: {str(e)}")
             raise
 
+    def _modify_m3u8_urls(self, m3u8_path: Path, video_name: str, key_filename: str):
+        """Modify the m3u8 file to use CDN URLs instead of direct storage URLs."""
+        print(f"Modifying m3u8 file URLs: {m3u8_path}")
+        
+        try:
+            with open(m3u8_path, 'r') as f:
+                content = f.read()
+            
+            # Replace the key URL
+            storage_key_url = f"https://nl.object-storage.io/private-bucket-nl/Example_folder_for_Key/{key_filename}"
+            cdn_key_url = f"{CDN_BASE_URL}/Example_folder_for_Key/{key_filename}"
+            content = content.replace(storage_key_url, cdn_key_url)
+            
+            # Replace the TS file URLs
+            storage_ts_url = f"https://nl.object-storage.io/private-bucket-nl/Example_folder_for_TS/{video_name}/{video_name}.ts"
+            cdn_ts_url = f"{CDN_BASE_URL}/Example_folder_for_TS/{video_name}/{video_name}.ts"
+            content = content.replace(storage_ts_url, cdn_ts_url)
+            
+            # Write the modified content back
+            with open(m3u8_path, 'w') as f:
+                f.write(content)
+            
+            print(f"✓ Successfully modified URLs in {m3u8_path.name}")
+            
+        except Exception as e:
+            print(f"Error modifying m3u8 URLs: {str(e)}")
+            raise
+
     def process_video(self, input_file: Path):
         """Process a single video file."""
         try:
@@ -180,24 +217,26 @@ class VideoProcessor:
             key_info_path = self._write_key_file(video_dir, key, key_filename)
             print(f"Wrote key info file at: {key_info_path}")
             
-            # Generate main stream playlist with single file
-            print("1. Generating main stream playlist with single file...")
-            output_ts = video_dir / f"{video_name}.ts"
+            # Create a temporary key info file that uses local path
+            temp_key_info_path = video_dir / "temp_key_info"
+            key_path = video_dir / key_filename
+            with open(temp_key_info_path, 'w') as f:
+                # Use local path for the key file during encoding
+                f.write(f"{key_filename}\n{str(key_path)}\n")
+
             stream_cmd = [
                 FFMPEG_PATH,
                 "-i", str(input_file),
-                "-c:v", "copy", 
+                "-c:v", "copy",
                 "-c:a", "copy",
                 "-force_key_frames", "expr:gte(t,n_forced*1)",
                 "-f", "hls",
-                "-hls_time", "2.000",
+                "-hls_time", str(SEGMENT_DURATION),
                 "-movflags", "+faststart",
                 "-hls_segment_type", "mpegts",
                 "-hls_list_size", "0",
-                "-hls_flags", "independent_segments",
-                "-hls_segment_filename", str(video_dir / f"{video_name}_%03d.ts"),
-                "-hls_flags", "single_file",
-                "-hls_key_info_file", str(key_info_path),
+                "-hls_flags", "independent_segments+single_file",
+                "-hls_key_info_file", str(temp_key_info_path),
                 "-hls_playlist_type", "vod",
                 str(video_dir / "stream.m3u8")
             ]
@@ -209,7 +248,7 @@ class VideoProcessor:
                 print(f"FFmpeg error: {result.stderr}")
                 raise Exception(f"FFmpeg command failed: {result.stderr}")
             
-            print(f"FFmpeg output: {result.stdout[:200]}...")  # Show first 200 chars of output
+            print(f"FFmpeg output: {result.stdout[:200]}...")
             print("✓ Main stream playlist generated!")
             
             # Check if files were created
@@ -218,6 +257,39 @@ class VideoProcessor:
             else:
                 print(f"stream.m3u8 was created successfully, size: {os.path.getsize(video_dir / 'stream.m3u8')} bytes")
                 
+                # Update URLs in stream.m3u8
+                print("Updating URLs in stream.m3u8...")
+                with open(video_dir / "stream.m3u8", "r") as f:
+                    lines = f.readlines()
+                
+                modified_lines = []
+                for line in lines:
+                    if line.startswith("#EXT-X-KEY"):
+                        # Replace the key URI with full CDN URL
+                        line = line.replace(f'URI="{key_filename}"', f'URI="{CDN_BASE_URL}/Example_folder_for_Key/{key_filename}"')
+                        # Make sure line includes the closing quote and IV
+                        if not line.strip().endswith('"'):
+                            if 'IV=' in line:
+                                # Keep the IV parameter
+                                iv_part = line.split('IV=')[1]
+                                line = line.split('IV=')[0] + f'IV={iv_part}'
+                            else:
+                                # Add the closing quote
+                                line = line.rstrip() + '"\n'
+                    elif line.strip() == "stream.ts":
+                        # Replace the local TS file path with CDN URL
+                        line = f"{CDN_BASE_URL}/Example_folder_for_TS/{video_name}/{video_name}.ts\n"
+                    modified_lines.append(line)
+                
+                with open(video_dir / "stream.m3u8", "w") as f:
+                    f.writelines(modified_lines)
+                print("✓ Updated URLs in stream.m3u8")
+                
+                print("\nFirst few lines of updated stream.m3u8:")
+                for i, line in enumerate(modified_lines):
+                    if i < 10:
+                        print(line.strip())
+            
             # In single file mode, FFmpeg creates a file named stream0.ts
             ts_file = video_dir / f"{video_name}_000.ts"  # Updated to match new naming pattern
             if not ts_file.exists():
@@ -225,17 +297,76 @@ class VideoProcessor:
             else:
                 print(f"{ts_file.name} was created successfully, size: {os.path.getsize(ts_file)} bytes")
                 # Rename to video_name.ts
-                ts_file.rename(output_ts)
-                print(f"Renamed {ts_file.name} to {output_ts.name}")
+                ts_file.rename(video_dir / f"{video_name}.ts")
+                print(f"Renamed {ts_file.name} to {video_dir / f'{video_name}.ts'}")
             
-            # Generate iframe playlist
-            self._create_iframe_playlist(input_file, video_dir, key_info_path, video_name)
+            # Update iframe playlist command to use local paths
+            iframe_cmd = [
+                FFMPEG_PATH,
+                "-i", str(input_file),
+                "-c:v", "copy",
+                "-c:a", "copy",
+                "-force_key_frames", "expr:gte(t,n_forced*1)",
+                "-f", "hls",
+                "-hls_time", str(SEGMENT_DURATION),
+                "-movflags", "+faststart",
+                "-hls_segment_type", "mpegts",
+                "-hls_list_size", "0",
+                "-hls_flags", "single_file",
+                "-hls_key_info_file", str(temp_key_info_path),
+                "-hls_playlist_type", "vod",
+                str(video_dir / "iframe.m3u8")
+            ]
             
-            # Check if iframe playlist was created
-            if not (video_dir / "iframe.m3u8").exists():
-                print(f"Warning: iframe.m3u8 was not created!")
+            print("2. Generating iframe playlist...")
+            print(f"Running iframe FFmpeg command: {' '.join(iframe_cmd)}")
+            result = subprocess.run(iframe_cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                print(f"FFmpeg iframe error: {result.stderr}")
+                raise Exception(f"FFmpeg iframe command failed: {result.stderr}")
+            
+            # Modify the iframe playlist to add I-FRAMES-ONLY tag and update URLs
+            if (video_dir / "iframe.m3u8").exists():
+                with open(video_dir / "iframe.m3u8", "r") as f:
+                    lines = f.readlines()
+                
+                modified_lines = []
+                for line in lines:
+                    if line.startswith("#EXT-X-KEY"):
+                        # Replace the key URI with full CDN URL
+                        line = line.replace(f'URI="{key_filename}"', f'URI="{CDN_BASE_URL}/Example_folder_for_Key/{key_filename}"')
+                        # Make sure line includes the closing quote and IV
+                        if not line.strip().endswith('"'):
+                            if 'IV=' in line:
+                                # Keep the IV parameter
+                                iv_part = line.split('IV=')[1]
+                                line = line.split('IV=')[0] + f'IV={iv_part}'
+                            else:
+                                # Add the closing quote
+                                line = line.rstrip() + '"\n'
+                    elif line.strip() == "iframe.ts":
+                        # Replace the local TS file path with CDN URL
+                        line = f"{CDN_BASE_URL}/Example_folder_for_TS/{video_name}/{video_name}.ts\n"
+                    modified_lines.append(line)
+                
+                # Add I-FRAMES-ONLY tag after version tag
+                for i, line in enumerate(modified_lines):
+                    if line.startswith("#EXT-X-VERSION"):
+                        modified_lines.insert(i + 1, "#EXT-X-I-FRAMES-ONLY\n")
+                        break
+                
+                with open(video_dir / "iframe.m3u8", "w") as f:
+                    f.writelines(modified_lines)
+                
+                print("✓ Updated iframe playlist with I-FRAMES-ONLY tag and CDN URLs")
+                
+                print("\nFirst few lines of updated iframe.m3u8:")
+                for i, line in enumerate(modified_lines):
+                    if i < 10:
+                        print(line.strip())
             else:
-                print(f"iframe.m3u8 was created successfully, size: {os.path.getsize(video_dir / 'iframe.m3u8')} bytes")
+                print(f"Warning: iframe.m3u8 was not created!")
             
             # Upload to storage
             print("3. Uploading files to storage...")
@@ -246,17 +377,15 @@ class VideoProcessor:
                 print("❌ Failed to upload some files to storage!")
                 return False, f"Failed to upload files for {video_name}"
             
-            # List all files in the directory
-            print(f"Files in {video_dir}:")
-            for file in video_dir.glob("*"):
-                print(f"  - {file.name} ({os.path.getsize(file)} bytes)")
+            # Clean up temporary files
+            if temp_key_info_path.exists():
+                os.remove(temp_key_info_path)
             
-            return True, f"Successfully processed {video_name}"
+            return True, None
+            
         except Exception as e:
-            print(f"❌ Error: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False, f"Error processing {input_file.name}: {str(e)}"
+            print(f"Error processing video {input_file.name}: {str(e)}")
+            return False, str(e)
 
     def process_all_videos(self) -> bool:
         """Process all MP4 files in the input directory."""

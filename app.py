@@ -3,7 +3,7 @@ from flask import Flask, render_template_string, request, Response
 from flask_cors import CORS
 from folder_storage_handler import FolderStorageHandler  # Ensure this import is present
 
-app = Flask(__name__)
+    app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
         "origins": "*",
@@ -71,8 +71,8 @@ HTML_TEMPLATE = """
                 <div class="video-thumbnail">
                     <video width="100%" height="100%" muted playsinline>
                         <source src="/proxy/{{ video.id }}" type="application/x-mpegURL">
-                    </video>
-                </div>
+            </video>
+        </div>
                 <p>{{ video.name }}</p>
             </div>
             {% endfor %}
@@ -114,7 +114,7 @@ class HLSPlayer:
         # Extract the folder name and file name from the m3u8 URL
         folder_name = m3u8_url.split('/')[-2]  # Get the folder name (e.g., 'maverick')
         file_name = m3u8_url.split('/')[-1].replace('.m3u8', '')  # Get the file name without extension (e.g., 'stream')
-        return {
+            return {
             'id': video_id,
             'name': f'{folder_name.capitalize()} {file_name.capitalize()}',  # e.g., 'Maverick Stream'
             'url': m3u8_url

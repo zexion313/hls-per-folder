@@ -40,7 +40,26 @@ class FolderStorageHandler:
         try:
             full_key = f"{self.key_folder}/{object_key}"
             print(f"Uploading key file {local_path} to {full_key}...")
-            self.session.upload_file(local_path, self.bucket, full_key)
+            
+            # Add specific content headers to prevent CDN issues
+            self.session.upload_file(
+                local_path, 
+                self.bucket, 
+                full_key,
+                ExtraArgs={
+                    'ContentType': 'application/octet-stream',
+                    'ContentEncoding': 'identity',
+                    'CacheControl': 'no-transform',
+                    # Add CORS headers
+                    'ACL': 'public-read',
+                    'Metadata': {
+                        'access-control-allow-origin': '*',
+                        'access-control-allow-methods': 'GET, HEAD',
+                        'access-control-max-age': '3000'
+                    }
+                }
+            )
+            
             print(f"Successfully uploaded key file {full_key}")
             return True
         except Exception as e:
@@ -55,7 +74,26 @@ class FolderStorageHandler:
             
             full_key = f"{self.m3u8_folder}/{object_key}"
             print(f"Uploading m3u8 file {local_path} to {full_key}...")
-            self.session.upload_file(local_path, self.bucket, full_key)
+            
+            # Add proper content type and cache control headers
+            self.session.upload_file(
+                local_path, 
+                self.bucket, 
+                full_key,
+                ExtraArgs={
+                    'ContentType': 'application/vnd.apple.mpegurl',
+                    'CacheControl': 'no-cache',
+                    'ContentEncoding': 'identity',
+                    # Add CORS headers
+                    'ACL': 'public-read',
+                    'Metadata': {
+                        'access-control-allow-origin': '*',
+                        'access-control-allow-methods': 'GET, HEAD',
+                        'access-control-max-age': '3000'
+                    }
+                }
+            )
+            
             print(f"Successfully uploaded m3u8 file {full_key}")
             return True
         except Exception as e:
@@ -65,21 +103,28 @@ class FolderStorageHandler:
     def _update_m3u8_file(self, local_path: str, video_name: str, key_filename: str):
         """Update the m3u8 file to use the correct URLs for key and TS files"""
         try:
+            # Use CDN URLs instead of direct S3 URLs
+            # Import the CDN_BASE_URL from the main script
+            from generatePerFolder import CDN_BASE_URL
+            
             with open(local_path, 'r') as f:
-                content = f.read()
+                lines = f.readlines()
             
-            # Replace the key URL
-            key_url = f"{self.endpoint_url}/{self.bucket}/{self.key_folder}/{key_filename}"
-            content = re.sub(r'#EXT-X-KEY:METHOD=AES-128,URI="[^"]*"', f'#EXT-X-KEY:METHOD=AES-128,URI="{key_url}"', content)
-            
-            # Replace the TS file URL if it's a stream.m3u8 file
-            if "stream.m3u8" in local_path:
-                ts_url = f"{self.endpoint_url}/{self.bucket}/{self.ts_folder}/{video_name}/{video_name}.ts"
-                # Find the line with the .ts file and replace it with the full URL
-                content = re.sub(r'(^[^#].*\.ts$)', ts_url, content, flags=re.MULTILINE)
+            modified_lines = []
+            for line in lines:
+                if line.startswith("#EXT-X-KEY"):
+                    # Handle the key URL carefully to maintain the correct format
+                    key_url = f"{CDN_BASE_URL}/Example_folder_for_Key/{key_filename}"
+                    # Use a more precise replacement pattern to keep the closing quote and IV
+                    line = re.sub(r'URI="[^"]*"', f'URI="{key_url}"', line)
+                elif line.startswith("https://"):
+                    # Replace the TS file URL
+                    ts_url = f"{CDN_BASE_URL}/Example_folder_for_TS/{video_name}/{video_name}.ts"
+                    line = ts_url + "\n"
+                modified_lines.append(line)
             
             with open(local_path, 'w') as f:
-                f.write(content)
+                f.writelines(modified_lines)
                 
             print(f"Updated URLs in {local_path}")
             return True
@@ -92,7 +137,25 @@ class FolderStorageHandler:
         try:
             full_key = f"{self.ts_folder}/{object_key}"
             print(f"Uploading TS file {local_path} to {full_key}...")
-            self.session.upload_file(local_path, self.bucket, full_key)
+            
+            # Add specific content headers to prevent CDN compression
+            self.session.upload_file(
+                local_path, 
+                self.bucket, 
+                full_key,
+                ExtraArgs={
+                    'ContentType': 'video/mp2t',
+                    'ContentEncoding': 'identity',
+                    # Add CORS headers
+                    'ACL': 'public-read',
+                    'Metadata': {
+                        'access-control-allow-origin': '*',
+                        'access-control-allow-methods': 'GET, HEAD',
+                        'access-control-max-age': '3000'
+                    }
+                }
+            )
+            
             print(f"Successfully uploaded TS file {full_key}")
             return True
         except Exception as e:
